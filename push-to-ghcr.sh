@@ -28,7 +28,9 @@ set -e  # Exit if any command fails
 REGISTRY="ghcr.io"  # GitHub Container Registry URL
 # Auto-detect repository owner from environment (works in GitHub Actions) or default to Guttmacher
 REPO_OWNER="${REPO_OWNER:-${GITHUB_REPOSITORY_OWNER:-Guttmacher}}"
-REPOSITORY="${REPO_OWNER}/research-stack"  # Full repository path: ghcr.io/username/research-stack
+# Convert to lowercase for Docker registry compatibility
+REPO_OWNER_LOWER=$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
+REPOSITORY="${REPO_OWNER_LOWER}/research-stack"  # Full repository path: ghcr.io/username/research-stack
 DEFAULT_TAG="latest"  # Default tag if none specified
 DEFAULT_TARGET="full-container"  # Default container type if none specified
 
