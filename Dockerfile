@@ -198,6 +198,58 @@ RUN apt-get update -qq && apt-get -y upgrade && \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
+# Install Podman (daemonless container engine)
+# ---------------------------------------------------------------------------
+# Podman is a fully open-source, daemonless alternative to Docker.
+# Benefits:
+# - No daemon to start (works immediately)
+# - Rootless by design (more secure)
+# - Docker-compatible CLI
+# - No sudo required for operation
+# - Apache 2.0 licensed (completely open source)
+# ---------------------------------------------------------------------------
+RUN set -e; \
+    # Install Podman and related tools from Ubuntu repositories
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        podman \
+        buildah \
+        skopeo \
+        fuse-overlayfs \
+        slirp4netns && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    # Configure Podman registries for Docker Hub compatibility
+    mkdir -p /etc/containers && \
+    cat > /etc/containers/registries.conf << 'EOF'
+unqualified-search-registries = ["docker.io"]
+
+[[registry]]
+prefix = "docker.io"
+location = "docker.io"
+
+[[registry]]
+prefix = "quay.io" 
+location = "quay.io"
+
+[[registry]]
+prefix = "registry.fedoraproject.org"
+location = "registry.fedoraproject.org"
+EOF
+    # Create Docker compatibility alias
+    echo '#!/bin/bash' > /usr/local/bin/docker && \
+    echo 'exec podman "$@"' >> /usr/local/bin/docker && \
+    chmod +x /usr/local/bin/docker; \
+    # Create docker-compose compatibility alias
+    echo '#!/bin/bash' > /usr/local/bin/docker-compose && \
+    echo 'exec podman-compose "$@"' >> /usr/local/bin/docker-compose && \
+    chmod +x /usr/local/bin/docker-compose; \
+    # Verify installation
+    podman --version && \
+    buildah --version && \
+    skopeo --version && \
+    echo "Docker compatibility: $(docker --version)"
+
+# ---------------------------------------------------------------------------
 # Install eza (modern replacement for ls) using official Debian/Ubuntu repo
 # ---------------------------------------------------------------------------
 RUN set -e; \
@@ -597,7 +649,8 @@ RUN pip3 install --user --break-system-packages \
     black \
     flake8 \
     mypy \
-    isort
+    isort \
+    podman-compose
 
 # Update PATH to include local pip installations
 ENV PATH=$PATH:/home/me/.local/bin
