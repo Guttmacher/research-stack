@@ -235,6 +235,9 @@ location = "quay.io"
 prefix = "registry.fedoraproject.org"
 location = "registry.fedoraproject.org"
 EOF
+
+# Create Docker compatibility aliases and verify installation
+RUN set -e; \
     # Create Docker compatibility alias
     echo '#!/bin/bash' > /usr/local/bin/docker && \
     echo 'exec podman "$@"' >> /usr/local/bin/docker && \

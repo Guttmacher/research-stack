@@ -90,9 +90,24 @@ fi
 
 # Check memory requirements for full-container
 if [ "$TARGET" = "full-container" ]; then
-  if [ -r /proc/meminfo ]; then
+  TOTAL_RAM_GB=0
+  
+  # Detect OS and use appropriate memory detection method
+  if [ "$(uname)" = "Darwin" ]; then
+    # macOS - use sysctl to get memory in bytes, convert to GB
+    if command -v sysctl >/dev/null 2>&1; then
+      TOTAL_RAM_BYTES=$(sysctl -n hw.memsize 2>/dev/null)
+      if [ -n "$TOTAL_RAM_BYTES" ] && [ "$TOTAL_RAM_BYTES" -gt 0 ]; then
+        TOTAL_RAM_GB=$((TOTAL_RAM_BYTES / 1024 / 1024 / 1024))
+      fi
+    fi
+  elif [ -r /proc/meminfo ]; then
+    # Linux - use /proc/meminfo
     TOTAL_RAM_KB=$(awk '/MemTotal:/ {print $2}' /proc/meminfo)
     TOTAL_RAM_GB=$((TOTAL_RAM_KB / 1024 / 1024))
+  fi
+  
+  if [ "$TOTAL_RAM_GB" -gt 0 ]; then
     # Use 30GB threshold to account for integer truncation (31.3GB → 31GB)
     if [ "$TOTAL_RAM_GB" -lt 30 ]; then
       err "full-container requires ≥32GB RAM (detected: ${TOTAL_RAM_GB}GB). Use r-container instead or add swap."
@@ -101,9 +116,11 @@ if [ "$TARGET" = "full-container" ]; then
         exit 2
       fi
       warn "IGNORE_RAM_CHECK=1 set; proceeding despite insufficient RAM (may OOM)"
+    else
+      info "Detected ${TOTAL_RAM_GB}GB RAM - sufficient for full-container build"
     fi
   else
-    warn "Cannot detect system RAM (/proc/meminfo unavailable); proceeding with full-container build"
+    warn "Cannot detect system RAM; proceeding with full-container build"
   fi
 fi
 
