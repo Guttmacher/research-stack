@@ -79,6 +79,10 @@ Multi-stage R development container for research environments. Primary focus is 
 - Dotfiles structure: `dotfiles/` → `/home/me/.*`
 - Support for both development and CI/CD workflows
 
+## GitHub Actions
+
+While initial work was started on GitHub Actions for automated builds and testing, GitHub Actions have been disabled in this repository. The build and deployment workflows are currently handled through local scripts (`build.sh`, `push-to-ghcr.sh`) and manual processes.
+
 ## Development Patterns
 
 **Shell Scripts:**
