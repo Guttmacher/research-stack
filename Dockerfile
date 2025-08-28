@@ -63,8 +63,8 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS base
 # These labels provide metadata about the container image and link it to
 # the source repository for GitHub Container Registry integration
 # ---------------------------------------------------------------------------
-LABEL org.opencontainers.image.source="https://github.com/Guttmacher/research-stack"
-LABEL org.opencontainers.image.description="Multi-stage R development environment with Neovim, VS Code, LaTeX, and Pandoc"
+LABEL org.opencontainers.image.source="https://github.com/guttmacher/research-stack"
+LABEL org.opencontainers.image.description="Comprehensive R statistical computing environment with Python and Pandoc"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # ---------------------------------------------------------------------------
@@ -1413,6 +1413,11 @@ USER root
 # ---------------------------------------------------------------------------
 
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS r-container
+
+# Container metadata labels for GitHub Container Registry integration
+LABEL org.opencontainers.image.source="https://github.com/guttmacher/research-stack"
+LABEL org.opencontainers.image.description="R environment for CI workflows"
+LABEL org.opencontainers.image.licenses="MIT"
 
 USER root
 RUN groupmod -g 2020 dialout || true;     groupmod -g 20 staff || true;     set -e;     VS_UID="$(id -u vscode)";     VS_GID="$(id -g vscode)";     VS_PRIMARY_GROUP_NAME="$(getent group "${VS_GID}" | cut -d: -f1)";     VS_GROUPS="$(id -nG vscode | tr ' ' ',')";     if ! getent group me > /dev/null 2>&1; then groupadd -o -g "${VS_GID}" me || true; fi;     if ! id -u me > /dev/null 2>&1; then useradd -o -u "${VS_UID}" -g "${VS_GID}" -M -d /home/me -s /bin/zsh me; fi;     if [ -d /home/vscode ] && [ ! -e /home/me ]; then mv /home/vscode /home/me; fi;     usermod -d /home/me vscode;     usermod -d /home/me me;     for my_grp in $(echo "${VS_GROUPS}" | tr ',' ' '); do       if [ "${my_grp}" = "${VS_PRIMARY_GROUP_NAME}" ]; then continue; fi;       usermod -aG "${my_grp}" me || true;     done;     chown -R "${VS_UID}:${VS_GID}" /home/me || true
