@@ -2,16 +2,6 @@
 name: Build and Push Containers
 
 "on":
-  push:
-    branches: [main]
-    paths:
-      - 'Dockerfile'
-      - 'build.sh'
-      - 'R_packages.txt'
-      - 'install_r_packages.sh'
-      - 'r-shell-config'
-      - 'dotfiles/**'
-      - '.github/workflows/build-and-push.yml'
   workflow_dispatch: {}
 
 permissions:
