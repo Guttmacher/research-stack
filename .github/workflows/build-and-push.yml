@@ -13,7 +13,7 @@ env:
   IMAGE_NAME: ${{ github.repository_owner }}/research-stack
 
 jobs:
-  build-r-container:
+  build-r-ci:
     runs-on: ubuntu-24.04-4-cores
     outputs:
       r-digest: ${{ steps.build.outputs.digest }}
@@ -47,7 +47,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          target: r-container
+          target: r-ci
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -59,8 +59,8 @@ jobs:
           primary_tag=$(echo "${{ steps.meta.outputs.tags }}" | head -1)
           docker buildx imagetools inspect "$primary_tag"
 
-  build-full-container:
-    needs: build-r-container
+  build-full:
+    needs: build-r-ci
     runs-on: ubuntu-24.04-8-cores
     steps:
       - name: Checkout
@@ -91,7 +91,7 @@ jobs:
         with:
           context: .
           platforms: linux/amd64,linux/arm64
-          target: full-container
+          target: full
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -104,7 +104,7 @@ jobs:
           docker buildx imagetools inspect "$primary_tag"
 
   security-scan:
-    needs: build-full-container
+    needs: build-full
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:

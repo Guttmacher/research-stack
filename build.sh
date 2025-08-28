@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Unified build script with daemonless fallback
-# Purpose: Build targets (full-container | r-container) for host or amd64.
+# Purpose: Build targets (full | r-ci) for host or amd64.
 # Features:
 #   * Uses classic docker / buildx when daemon available.
 #   * Falls back to rootless BuildKit (buildctl) when daemon absent AND output mode
@@ -10,12 +10,12 @@
 #   * Multi-platform manifest creation remains responsibility of push-to-ghcr.sh.
 #
 # Usage examples:
-#   ./build.sh r-container                 # host arch, load into daemon (if running)
-#   ./build.sh --amd64 r-container         # cross-build (load if daemon; else advise)
-#   ./build.sh --output oci r-container    # produce r-container-<arch>.oci (no daemon needed)
-#   ./build.sh --output tar r-container    # produce r-container-<arch>.tar (no daemon needed)
-#   R_BUILD_JOBS=4 ./build.sh --output oci --amd64 r-container
-#   ./build.sh --no-cache --debug full-container
+#   ./build.sh r-ci                 # host arch, load into daemon (if running)
+#   ./build.sh --amd64 r-ci         # cross-build (load if daemon; else advise)
+#   ./build.sh --output oci r-ci    # produce r-ci-<arch>.oci (no daemon needed)
+#   ./build.sh --output tar r-ci    # produce r-ci-<arch>.tar (no daemon needed)
+#   R_BUILD_JOBS=4 ./build.sh --output oci --amd64 r-ci
+#   ./build.sh --no-cache --debug full
 #
 # Environment:
 #   R_BUILD_JOBS (default 2)  Parallel R package compile jobs.
@@ -33,7 +33,7 @@ succ(){ echo -e "${GREEN}[OK]${NC} $*"; }
 usage(){ cat <<EOF
 Unified build script (docker + rootless buildctl fallback)
 
-Usage: $0 [--amd64] [--no-cache] [--debug] [--no-fallback] [--output load|oci|tar] <full-container|r-container>
+Usage: $0 [--amd64] [--no-cache] [--debug] [--no-fallback] [--output load|oci|tar] <full|r-ci>
 
 Options:
   --amd64              Build linux/amd64 (uses buildx or buildctl if cross-arch).
@@ -50,13 +50,13 @@ Environment:
   AUTO_INSTALL_BUILDKIT=1   Permit script to apt-get install buildkit if buildctl missing.
   BUILDKIT_HOST             Remote buildkit address (e.g. tcp://buildkitd:1234) for buildctl.
   BUILDKIT_PROGRESS=plain   Control buildctl progress output (default fancy, plain better for CI logs).
-  IGNORE_RAM_CHECK=1        Override 32GB RAM requirement for full-container (use with caution).
+  IGNORE_RAM_CHECK=1        Override 32GB RAM requirement for full (use with caution).
 
 Examples:
-  ./build.sh full-container
-  ./build.sh --output oci r-container
-  ./build.sh --amd64 --output tar r-container
-  R_BUILD_JOBS=6 ./build.sh --debug --output oci full-container
+  ./build.sh full
+  ./build.sh --output oci r-ci
+  ./build.sh --amd64 --output tar r-ci
+  R_BUILD_JOBS=6 ./build.sh --debug --output oci full
 EOF
 }
 
@@ -79,7 +79,7 @@ while [[ $# -gt 0 ]]; do
   --output) OUTPUT_MODE="$2"; OUTPUT_EXPLICIT=true; shift 2;;
   --no-fallback) FALLBACK_ENABLED=false; shift;;
     -h|--help) usage; exit 0;;
-    full-container|r-container) TARGET="$1"; shift;;
+    full|r-ci) TARGET="$1"; shift;;
     *) err "Unknown argument: $1"; usage; exit 1;;
   esac
 done
@@ -88,8 +88,8 @@ if [ -z "$TARGET" ]; then
   usage; err "Target required"; exit 1
 fi
 
-# Check memory requirements for full-container
-if [ "$TARGET" = "full-container" ]; then
+# Check memory requirements for full
+if [ "$TARGET" = "full" ]; then
   TOTAL_RAM_GB=0
   
   # Detect OS and use appropriate memory detection method
@@ -110,17 +110,17 @@ if [ "$TARGET" = "full-container" ]; then
   if [ "$TOTAL_RAM_GB" -gt 0 ]; then
     # Use 30GB threshold to account for integer truncation (31.3GB → 31GB)
     if [ "$TOTAL_RAM_GB" -lt 30 ]; then
-      err "full-container requires ≥32GB RAM (detected: ${TOTAL_RAM_GB}GB). Use r-container instead or add swap."
+      err "full requires ≥32GB RAM (detected: ${TOTAL_RAM_GB}GB). Use r-ci instead or add swap."
       err "Override with IGNORE_RAM_CHECK=1 if you have sufficient swap configured."
       if [ "${IGNORE_RAM_CHECK:-0}" != "1" ]; then
         exit 2
       fi
       warn "IGNORE_RAM_CHECK=1 set; proceeding despite insufficient RAM (may OOM)"
     else
-      info "Detected ${TOTAL_RAM_GB}GB RAM - sufficient for full-container build"
+      info "Detected ${TOTAL_RAM_GB}GB RAM - sufficient for full build"
     fi
   else
-    warn "Cannot detect system RAM; proceeding with full-container build"
+    warn "Cannot detect system RAM; proceeding with full build"
   fi
 fi
 
@@ -281,8 +281,8 @@ if [ "$OUTPUT_MODE" != load ]; then
 echo
 if [ "$OUTPUT_MODE" = load ]; then
   succ "Quick test: docker run --rm $IMAGE_TAG uname -m"
-  [ "$TARGET" = "r-container" ] && echo "Run R: docker run --rm $IMAGE_TAG R -q -e 'sessionInfo()'" || true
-  echo "Push (single-arch): docker tag $IMAGE_TAG ghcr.io/OWNER/research-stack:${TARGET#full-container} && docker push ghcr.io/OWNER/research-stack:..."
+  [ "$TARGET" = "r-ci" ] && echo "Run R: docker run --rm $IMAGE_TAG R -q -e 'sessionInfo()'" || true
+  echo "Push (single-arch): docker tag $IMAGE_TAG ghcr.io/OWNER/research-stack:${TARGET#full} && docker push ghcr.io/OWNER/research-stack:..."
 else
   succ "Image not loaded (output=$OUTPUT_MODE). Use buildx to load if needed: docker load -i ${OUT_DEST} (tar only)"
   [ "$OUTPUT_MODE" = tar ] && echo "Load later: docker load -i ${OUT_DEST}" || true

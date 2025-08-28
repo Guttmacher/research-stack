@@ -8,7 +8,7 @@
 #
 # TWO DIFFERENT MODES:
 # 1. DEFAULT MODE: Push existing local images (built with build.sh)
-#    - Uses the platform-specific images like "full-container-arm64"
+#    - Uses the platform-specific images like "full-arm64"
 #    - Each image only works on its specific architecture
 #
 # 2. MULTI-PLATFORM MODE (-a flag): Build and push multi-platform images
@@ -32,7 +32,7 @@ REPO_OWNER="${REPO_OWNER:-${GITHUB_REPOSITORY_OWNER:-Guttmacher}}"
 REPO_OWNER_LOWER=$(echo "$REPO_OWNER" | tr '[:upper:]' '[:lower:]')
 REPOSITORY="${REPO_OWNER_LOWER}/research-stack"  # Full repository path: ghcr.io/username/research-stack
 DEFAULT_TAG="latest"  # Default tag if none specified
-DEFAULT_TARGET="full-container"  # Default container type if none specified
+DEFAULT_TARGET="full"  # Default container type if none specified
 
 # Colors for output
 RED='\033[0;31m'
@@ -67,7 +67,7 @@ Push Docker images to GitHub Container Registry (GHCR)
 
 OPTIONS:
     -t, --target TARGET     Push specific target only (default: push all targets)
-                           Available targets: full-container, r-container
+                           Available targets: full, r-ci
     -g, --tag TAG          Tag for the image (default: $DEFAULT_TAG)
     -b, --build            Build the image before pushing
     -f, --force            Force push even if image doesn't exist locally
@@ -77,9 +77,9 @@ OPTIONS:
 EXAMPLES:
     $0                                         # Push all targets (host platform only)
     $0 -a                                      # Build and push all targets (both platforms)
-    $0 -t full-container                       # Push only full-container (host platform)
-    $0 -a -t full-container                    # Build and push full-container (both platforms)
-    $0 -t r-container -g v1.0.0              # Push only r-container:v1.0.0 (host platform)
+    $0 -t full                       # Push only full (host platform)
+    $0 -a -t full                    # Build and push full (both platforms)
+    $0 -t r-ci -g v1.0.0              # Push only r-ci:v1.0.0 (host platform)
     $0 -b                                     # Build and push all targets (host platform)
     $0 -a -b                                  # Build and push all targets (both platforms)
 
@@ -112,7 +112,7 @@ check_ghcr_login() {
 
 # Function to get host architecture for consistent naming
 # WHY WE NEED THIS: When pushing existing local images, we need to know which
-# architecture-specific image to look for (e.g., "full-container-arm64" vs "full-container-amd64")
+# architecture-specific image to look for (e.g., "full-arm64" vs "full-amd64")
 get_host_arch() {
     case "$(uname -m)" in
         x86_64) echo "amd64" ;;      # Intel/AMD processors (most cloud servers, older Macs)
@@ -131,7 +131,7 @@ get_display_tag() {
     local target="$1"
     local tag="$2"
     
-    if [[ "$target" == "r-container" ]]; then
+    if [[ "$target" == "r-ci" ]]; then
         echo "r-${tag}"
     else
         echo "${tag}"
@@ -142,11 +142,11 @@ get_display_tag() {
 # WHY WE CHECK: Before trying to push an image, we should verify it exists locally.
 # This gives a clear error message instead of a confusing Docker error.
 check_local_image() {
-    local target="$1"  # e.g., "full-container"
+    local target="$1"  # e.g., "full"
     local tag="$2"     # e.g., "latest" (though we don't use this currently)
     local host_arch=$(get_host_arch)
 
-    # Check for arch-specific naming pattern (e.g., "full-container-arm64")
+    # Check for arch-specific naming pattern (e.g., "full-arm64")
     # This is the naming convention used by our build scripts
     local arch_specific_name="${target}-${host_arch}"
     if docker image inspect "${arch_specific_name}" >/dev/null 2>&1; then
@@ -162,8 +162,8 @@ build_image() {
     print_status "Building image for target: $target via unified build.sh"
     if [[ -f ./build.sh ]]; then
         case "$target" in
-          full-container) ./build.sh full-container ;;
-          r-container)    ./build.sh r-container    ;;
+          full) ./build.sh full ;;
+          r-ci)    ./build.sh r-ci    ;;
           *) print_error "Unknown target: $target"; return 1;;
         esac
     else
@@ -175,22 +175,25 @@ build_image() {
 
 # Function to push a local image to the registry
 # WHY THIS IS COMPLEX: We need to handle different naming conventions and tag formats
-# for different container types (full-container vs r-container)
+# for different container types (full vs r-ci)
 push_image() {
-    local target="$1"   # e.g., "full-container" or "r-container"
+    local target="$1"   # e.g., "full" or "r-ci"
     local tag="$2"      # e.g., "latest"
     local force="$3"    # "true" if user wants to force push without local image
     local host_arch=$(get_host_arch)
     
-    # Determine the registry image name and tag
-    local remote_image="${REGISTRY}/${REPOSITORY}:${tag}"
-    
-    # For r-container, use a different tag but same repository
-    # WHY: Both containers come from the same source repo, but we want to distinguish them
-# Result: full-container -> research-stack:latest, r-container -> research-stack:r-latest
-    if [[ "$target" == "r-container" ]]; then
-        remote_image="${REGISTRY}/${REPOSITORY}:r-${tag}"
+    # Determine the registry image name based on target
+    local image_name
+    if [[ "$target" == "full" ]]; then
+        image_name="full"
+    elif [[ "$target" == "r-ci" ]]; then
+        image_name="r-ci"
+    else
+        print_error "Unknown target: $target"
+        return 1
     fi
+    
+    local remote_image="${REGISTRY}/${REPOSITORY}/${image_name}:${tag}"
     
     # Check if local image exists (unless forcing)
     if ! check_local_image "$target" "$tag" && [[ "$force" != "true" ]]; then
@@ -199,7 +202,7 @@ push_image() {
     fi
     
     # Use arch-specific naming (matches our build scripts)
-    local source_image="${target}-${host_arch}"  # e.g., "full-container-arm64"
+    local source_image="${target}-${host_arch}"  # e.g., "full-arm64"
     
     # Verify the expected image exists
     if ! docker image inspect "${source_image}" >/dev/null 2>&1; then
@@ -225,16 +228,21 @@ push_image() {
 # Docker automatically serves the right architecture to each user. However, these images
 # can't be stored locally - they must be pushed directly to a registry.
 build_and_push_multiplatform() {
-    local target="$1"  # e.g., "full-container"
+    local target="$1"  # e.g., "full"
     local tag="$2"     # e.g., "latest"
     
-    # Determine registry destination (same logic as push_image)
-    local remote_image="${REGISTRY}/${REPOSITORY}:${tag}"
-    
-    # For r-container, use a different tag but same repository
-    if [[ "$target" == "r-container" ]]; then
-        remote_image="${REGISTRY}/${REPOSITORY}:r-${tag}"
+    # Determine the registry image name based on target
+    local image_name
+    if [[ "$target" == "full" ]]; then
+        image_name="full"
+    elif [[ "$target" == "r-ci" ]]; then
+        image_name="r-ci"
+    else
+        print_error "Unknown target: $target"
+        return 1
     fi
+    
+    local remote_image="${REGISTRY}/${REPOSITORY}/${image_name}:${tag}"
     
     print_status "Building and pushing multi-platform image for target: $target"
     print_status "Platforms: linux/amd64,linux/arm64"
@@ -306,7 +314,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 # Validate target
-TARGETS=("full-container" "r-container")
+TARGETS=("full" "r-ci")
 if [[ "$PUSH_ALL" == "false" ]]; then
     # Specific target was provided with -t flag
     if [[ ! " ${TARGETS[@]} " =~ " ${TARGET} " ]]; then
@@ -337,7 +345,7 @@ if [[ "$ALL_PLATFORMS" == "true" ]]; then
     if [[ "$PUSH_ALL" == "true" ]]; then
         print_status "Building and pushing all targets (multi-platform)..."
         failed_builds=0
-        VALID_TARGETS=("full-container" "r-container")
+        VALID_TARGETS=("full" "r-ci")
         for target in "${VALID_TARGETS[@]}"; do
             echo
             print_status "Processing target: $target (multi-platform)"
@@ -393,24 +401,32 @@ print_success "All operations completed successfully!"
 if [[ "$ALL_PLATFORMS" == "true" ]]; then
     if [[ "$PUSH_ALL" == "true" ]]; then
         print_status "Pushed both containers (multi-platform: linux/amd64,linux/arm64):"
-print_status "  - full-container:${TAG} → https://github.com/${REPOSITORY}/pkgs/container/research-stack"
-        print_status "  - r-container:r-${TAG} → https://github.com/${REPOSITORY}/pkgs/container/research-stack"
+        print_status "  - full → ghcr.io/${REPOSITORY}/full:${TAG}"
+        print_status "  - r-ci → ghcr.io/${REPOSITORY}/r-ci:${TAG}"
     else
         print_status "Pushed single container (multi-platform: linux/amd64,linux/arm64):"
-        local display_tag="${TAG}"
-        [[ "$TARGET" == "r-container" ]] && display_tag="r-${TAG}"
-print_status "  - ${TARGET}:${display_tag} → https://github.com/${REPOSITORY}/pkgs/container/research-stack"
+        local image_name
+        if [[ "$TARGET" == "full" ]]; then
+            image_name="full"
+        else
+            image_name="r-ci"
+        fi
+        print_status "  - ${TARGET} → ghcr.io/${REPOSITORY}/${image_name}:${TAG}"
     fi
 else
     if [[ "$PUSH_ALL" == "true" ]]; then
         print_status "Pushed both containers (host platform only):"
-print_status "  - full-container:${TAG} → https://github.com/${REPOSITORY}/pkgs/container/research-stack"
-        print_status "  - r-container:r-${TAG} → https://github.com/${REPOSITORY}/pkgs/container/research-stack"
+        print_status "  - full → ghcr.io/${REPOSITORY}/full:${TAG}"
+        print_status "  - r-ci → ghcr.io/${REPOSITORY}/r-ci:${TAG}"
     else
         print_status "Pushed single container (host platform only):"
-        local display_tag="${TAG}"
-        [[ "$TARGET" == "r-container" ]] && display_tag="r-${TAG}"
-print_status "  - ${TARGET}:${display_tag} → https://github.com/${REPOSITORY}/pkgs/container/research-stack"
+        local image_name
+        if [[ "$TARGET" == "full" ]]; then
+            image_name="full"
+        else
+            image_name="r-ci"
+        fi
+        print_status "  - ${TARGET} → ghcr.io/${REPOSITORY}/${image_name}:${TAG}"
         echo
         print_status "💡 To push both containers, run without -t flag: $0"
         print_status "💡 To push multi-platform images, add -a flag: $0 -a"

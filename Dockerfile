@@ -16,7 +16,7 @@
 #             Stage 9 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r): Install R, CmdStan, and JAGS.
 #             Stage 10 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak): Install a comprehensive suite of R packages.
 #             Stage 11 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode): Setup VS Code server with pre-installed extensions.
-#             Stage 12 (full-container)              : Final stage; applies shell config, sets workdir, and finalizes defaults.
+#             Stage 12 (full)              : Final stage; applies shell config, sets workdir, and finalizes defaults.
 #
 #   • Start/end timestamps for build duration calculation
 #   • Filesystem usage before/after each stage
@@ -1412,7 +1412,7 @@ USER root
 # Target: ~700MB+ space savings from 4GB to ~3.3GB
 # ---------------------------------------------------------------------------
 
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS r-container
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS r-ci
 
 # Container metadata labels for GitHub Container Registry integration
 LABEL org.opencontainers.image.source="https://github.com/guttmacher/research-stack"
@@ -1473,7 +1473,7 @@ RUN set -e; \
         && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# CmdStan removed in r-container (CI image). Use full-container if you need Stan compilation.
+# CmdStan removed in r-ci (CI image). Use full if you need Stan compilation.
 
 # ---------------------------------------------------------------------------
 # JAGS installation (same as stage 9)
@@ -1597,8 +1597,8 @@ RUN set -e; \
     mkdir -p "$TMPDIR"; \
     \
     # Install R packages with unified exclusion system
-    # Exclude Stan packages (no CmdStan in CI image) and GitHub packages for r-container
-    echo "Installing R packages with exclusions for r-container (CI-focused image)..."; \
+    # Exclude Stan packages (no CmdStan in CI image) and GitHub packages for r-ci
+    echo "Installing R packages with exclusions for r-ci (CI-focused image)..."; \
     /tmp/install_r_packages.sh --packages-file /tmp/R_packages.txt --exclude-packages "rstan cmdstanr rstanarm brms shinystan btw httpgd colorout"; \
     echo "✅ R package installation completed"; \
     \
@@ -1719,7 +1719,7 @@ USER me
 # This stage creates the complete development environment with all tools
 # ---------------------------------------------------------------------------
 
-FROM base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode AS full-container
+FROM base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode AS full
 
 USER root
 

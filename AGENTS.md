@@ -11,15 +11,15 @@ Multi-stage R development container for research environments. Primary focus is 
 ## Build Commands
 
 **Primary workflow (`build.sh`):**
-- Full container (host arch, load): `./build.sh full-container`
-- R-only container (host arch, load): `./build.sh r-container`
-- Cross-build amd64 (host != amd64 -> auto artifact): `./build.sh --amd64 full-container`
-- Explicit artifact outputs (daemonless): `./build.sh --output oci r-container` | `./build.sh --output tar full-container`
-- Force load on cross-build (requires daemon+buildx): `./build.sh --amd64 --output load r-container`
-- Debug R packages: `./build.sh --debug full-container`
-- No cache: `./build.sh --no-cache r-container`
-- Parallel jobs: `R_BUILD_JOBS=6 ./build.sh full-container`
-- Disable fallback: `./build.sh --no-fallback --output oci r-container`
+- Full container (host arch, load): `./build.sh full`
+- R-only container (host arch, load): `./build.sh r-ci`
+- Cross-build amd64 (host != amd64 -> auto artifact): `./build.sh --amd64 full`
+- Explicit artifact outputs (daemonless): `./build.sh --output oci r-ci` | `./build.sh --output tar full`
+- Force load on cross-build (requires daemon+buildx): `./build.sh --amd64 --output load r-ci`
+- Debug R packages: `./build.sh --debug full`
+- No cache: `./build.sh --no-cache r-ci`
+- Parallel jobs: `R_BUILD_JOBS=6 ./build.sh full`
+- Disable fallback: `./build.sh --no-fallback --output oci r-ci`
 
 **Output modes:**
 - `load` (default) – load into local Docker daemon (requires daemon; auto-changed to `oci` for cross-build if daemonless)
@@ -44,9 +44,9 @@ Multi-stage R development container for research environments. Primary focus is 
 - `BUILDKIT_PROGRESS=plain` – Simplify buildctl output (good for CI logs)
 
 **Quick validation / tests:**
-- Smoke test R: `docker run --rm full-container-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') R -q -e 'cat("R OK\n")'`
+- Smoke test R: `docker run --rm full-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') R -q -e 'cat("R OK\n")'`
 - Pandoc tests (inside full container): `./test_pandoc.sh`
-- One-off command: `docker run --rm r-container-<arch> R -q -e 'sessionInfo()'`
+- One-off command: `docker run --rm r-ci-<arch> R -q -e 'sessionInfo()'`
 
 **Lint/Format:**
 - Dockerfile: `hadolint Dockerfile`
@@ -63,8 +63,8 @@ Multi-stage R development container for research environments. Primary focus is 
 - Stage 4 (base-nvim-vscode-tex): + LaTeX/TeX Live
 - Stage 5 (base-nvim-vscode-tex-pandoc): + Pandoc and pandoc-crossref
 - Stage 6 (base-nvim-vscode-tex-pandoc-plus): + additional tools
-- Stage 7 (full-container): + comprehensive R package suite (268 packages from `R_packages.txt`)
-- Stage 8 (r-container): Slim CI image with essential R packages only
+- Stage 7 (full): + comprehensive R package suite (268 packages from `R_packages.txt`)
+- Stage 8 (r-ci): Slim CI image with essential R packages only
 
 **Key Components:**
 - R package installation via `install_r_packages.sh` with parallel compilation optimizations

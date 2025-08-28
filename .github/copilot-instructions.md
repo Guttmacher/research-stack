@@ -3,7 +3,7 @@
 Minimal guidance for AI assistants. For comprehensive details (targets, stages, style, tooling) see `CLAUDE.md` and the `README.md`.
 
 ## Build
-- Unified script: `./build.sh <full-container|r-container>`
+- Unified script: `./build.sh <full|r-ci>`
 - Cross-build amd64: `./build.sh --amd64 <target>` (auto artifact output unless `--output load`)
 - Artifact outputs: `--output oci` (directory) or `--output tar` (docker loadable)
 - Debug R packages: `--debug`
@@ -15,11 +15,11 @@ Minimal guidance for AI assistants. For comprehensive details (targets, stages, 
 - Single-arch push: build (load) then tag & push manually or via `push-to-ghCR.sh` (host arch).
 
 ## Targets
-- `full-container`: complete dev environment (Neovim, LaTeX, Pandoc, R, Python, VS Code server)
-- `r-container`: slim R-focused CI image (R + selected packages + JAGS)
+- `full`: complete dev environment (Neovim, LaTeX, Pandoc, R, Python, VS Code server)
+- `r-ci`: slim R-focused CI image (R + selected packages + JAGS)
 
 ## Conventions
-- Local images include arch suffix (e.g. `full-container-amd64`).
+- Local images include arch suffix (e.g. `full-amd64`).
 - Use `--output` for daemonless or cross builds to avoid flaky `--load` streams.
 - Prefer small, focused changes; avoid reintroducing legacy scripts.
 
