@@ -138,6 +138,14 @@ get_display_tag() {
     fi
 }
 
+# Function to get build labels for repository linking
+get_build_labels() {
+    echo "--label org.opencontainers.image.source=https://github.com/Guttmacher/research-stack"
+    echo "--label org.opencontainers.image.description=Research Stack Development Environment"
+    echo "--label org.opencontainers.image.licenses=MIT"
+    echo "--label org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+}
+
 # Function to check if local image exists
 # WHY WE CHECK: Before trying to push an image, we should verify it exists locally.
 # This gives a clear error message instead of a confusing Docker error.
@@ -168,7 +176,7 @@ build_image() {
         esac
     else
         print_status "Fallback docker build (build.sh missing)"
-        docker build --target "$target" -t "${target}-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/arm64/arm64/')" .
+        docker build --target "$target" $(get_build_labels) -t "${target}-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/arm64/arm64/')" .
     fi
     print_success "Build completed for target: $target"
 }
@@ -258,6 +266,7 @@ build_and_push_multiplatform() {
         --target "$target" \
         --build-arg DEBIAN_FRONTEND=noninteractive \
         --build-arg DEBCONF_NONINTERACTIVE_SEEN=true \
+        $(get_build_labels) \
         --push \
         -t "$remote_image" \
         . ; then
