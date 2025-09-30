@@ -1,5 +1,5 @@
-# Dockerfile for Base Container with Amazon Q CLI pre-installed
-FROM ghcr.io/jbearak/base-container:latest
+# Dockerfile for Research Stack with Amazon Q CLI pre-installed
+FROM ghcr.io/Guttmacher/research-stack:latest
 
 # Switch to the me user for installation
 USER me

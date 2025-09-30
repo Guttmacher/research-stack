@@ -12,7 +12,10 @@ options(renv.config.install.shortcuts = TRUE)
 # Disable tcl/tk menu; just print question in console
 options(menu.graphics=FALSE)
 
-# If in an interactive session, load the 'colorout' package for colored
+# If in an interactive session, load the 'colorout' package for colored output
+# (only if the package is available - it may be excluded in some builds)
 if (.Platform$OS.type == "unix" && (interactive() || isatty(stdout()))) {
-    try(library("colorout"))
+    if (requireNamespace("colorout", quietly = TRUE)) {
+        try(library("colorout", quietly = TRUE))
+    }
 }

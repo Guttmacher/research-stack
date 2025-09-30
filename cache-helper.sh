@@ -4,8 +4,8 @@
 set -e
 
 # Configuration - REPO_OWNER and REGISTRY can be overridden with environment variables
-REPO_OWNER="${REPO_OWNER:-${GITHUB_REPOSITORY_OWNER:-jbearak}}"  # Auto-detects in GitHub Actions
-REGISTRY="${REGISTRY:-ghcr.io/${REPO_OWNER}/base-container}"
+REPO_OWNER="${REPO_OWNER:-${GITHUB_REPOSITORY_OWNER:-Guttmacher}}"  # Auto-detects in GitHub Actions
+REGISTRY="${REGISTRY:-ghcr.io/${REPO_OWNER}/research-stack}"
 TARGETS=("base" "base-nvim" "base-nvim-vscode" "base-nvim-vscode-tex" "base-nvim-vscode-tex-pandoc" "base-nvim-vscode-tex-pandoc-plus" "full")
 
 usage() {
@@ -56,7 +56,7 @@ list_cache() {
 warm_cache() {
     local target="$1"
     echo "🔥 Warming cache for target: $target"
-    ./build-container.sh --${target} --cache-from-to "${REGISTRY}"
+    ./build.sh "${target}"
     echo "✅ Cache warmed for target: $target"
 }
 

@@ -1,5 +1,5 @@
 # ===========================================================================
-# MULTI-STAGE R base-container IMAGE - OPTIMIZED FOR DOCKER LAYER CACHING
+# MULTI-STAGE R research-stack IMAGE - OPTIMIZED FOR DOCKER LAYER CACHING
 # ===========================================================================
 # Purpose   : Build a containerized R development environment optimized for
 #             VS Code and the Dev Containers extension.  This Dockerfile uses
@@ -16,7 +16,7 @@
 #             Stage 9 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r): Install R, CmdStan, and JAGS.
 #             Stage 10 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak): Install a comprehensive suite of R packages.
 #             Stage 11 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode): Setup VS Code server with pre-installed extensions.
-#             Stage 12 (full-container)              : Final stage; applies shell config, sets workdir, and finalizes defaults.
+#             Stage 12 (full)              : Final stage; applies shell config, sets workdir, and finalizes defaults.
 #
 #   • Start/end timestamps for build duration calculation
 #   • Filesystem usage before/after each stage
@@ -32,20 +32,20 @@
 #   • Better separation of concerns (each stage has a clear purpose)
 #   • Optimized for Docker layer caching - VS Code updates won't invalidate R packages
 #
-# Usage     : See build-container.sh for user-friendly build commands, or
+# Usage     : Use build.sh for user-friendly build commands, or build directly with:
 #             build directly with:
-#               docker build --target base -t base-container:base .
-#               docker build --target base-nvim -t base-container:base-nvim .
-#               docker build --target base-nvim-tex -t base-container:base-nvim-tex .
-#               docker build --target base-nvim-tex-pandoc -t base-container:base-nvim-tex-pandoc .
-#               docker build --target base-nvim-tex-pandoc-haskell -t base-container:base-nvim-tex-pandoc-haskell .
-#               docker build --target base-nvim-tex-pandoc-haskell-crossref -t base-container:base-nvim-tex-pandoc-haskell-crossref .
-#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus -t base-container:base-nvim-tex-pandoc-haskell-crossref-plus .
-#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py -t base-container:base-nvim-tex-pandoc-haskell-crossref-plus-py .
-#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py-r -t base-container:base-nvim-tex-pandoc-haskell-crossref-plus-py-r .
-#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak -t base-container:base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak .
-#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode -t base-container:base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode .
-#               docker build --target full -t base-container:latest .
+#               docker build --target base -t research-stack:base .
+#               docker build --target base-nvim -t research-stack:base-nvim .
+#               docker build --target base-nvim-tex -t research-stack:base-nvim-tex .
+#               docker build --target base-nvim-tex-pandoc -t research-stack:base-nvim-tex-pandoc .
+#               docker build --target base-nvim-tex-pandoc-haskell -t research-stack:base-nvim-tex-pandoc-haskell .
+#               docker build --target base-nvim-tex-pandoc-haskell-crossref -t research-stack:base-nvim-tex-pandoc-haskell-crossref .
+#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus -t research-stack:base-nvim-tex-pandoc-haskell-crossref-plus .
+#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py -t research-stack:base-nvim-tex-pandoc-haskell-crossref-plus-py .
+#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py-r -t research-stack:base-nvim-tex-pandoc-haskell-crossref-plus-py-r .
+#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak -t research-stack:base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak .
+#               docker build --target base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode -t research-stack:base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode .
+#               docker build --target full -t research-stack:latest .
 #
 # ---------------------------------------------------------------------------
 
@@ -63,8 +63,8 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS base
 # These labels provide metadata about the container image and link it to
 # the source repository for GitHub Container Registry integration
 # ---------------------------------------------------------------------------
-LABEL org.opencontainers.image.source="https://github.com/jbearak/base-container"
-LABEL org.opencontainers.image.description="Multi-stage R development environment with Neovim, VS Code, LaTeX, and Pandoc"
+LABEL org.opencontainers.image.source="https://github.com/guttmacher/research-stack"
+LABEL org.opencontainers.image.description="Comprehensive R statistical computing environment with Python and Pandoc"
 LABEL org.opencontainers.image.licenses="MIT"
 
 # ---------------------------------------------------------------------------
@@ -198,48 +198,60 @@ RUN apt-get update -qq && apt-get -y upgrade && \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # ---------------------------------------------------------------------------
-# Install hadolint (Dockerfile linter) from GitHub releases
+# Install Podman (daemonless container engine)
+# ---------------------------------------------------------------------------
+# Podman is a fully open-source, daemonless alternative to Docker.
+# Benefits:
+# - No daemon to start (works immediately)
+# - Rootless by design (more secure)
+# - Docker-compatible CLI
+# - No sudo required for operation
+# - Apache 2.0 licensed (completely open source)
 # ---------------------------------------------------------------------------
 RUN set -e; \
-    ARCH="$(dpkg --print-architecture)"; \
-    case "$ARCH" in \
-      amd64) HDL_ARCH="x86_64" ;; \
-      arm64) HDL_ARCH="arm64" ;; \
-      *) echo "Unsupported arch for hadolint: $ARCH (supported: amd64, arm64)"; exit 1 ;; \
-    esac; \
-    # Get latest release info from GitHub API
-    RELEASE_INFO=$(curl -s https://api.github.com/repos/hadolint/hadolint/releases/latest); \
-    HDL_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
-    echo "Installing hadolint version: ${HDL_VERSION}"; \
-    # Construct URLs for binary and checksum
-    HDL_BINARY_URL="https://github.com/hadolint/hadolint/releases/download/${HDL_VERSION}/hadolint-Linux-${HDL_ARCH}"; \
-    HDL_CHECKSUM_URL="https://github.com/hadolint/hadolint/releases/download/${HDL_VERSION}/hadolint-Linux-${HDL_ARCH}.sha256"; \
-    echo "Downloading hadolint binary from: ${HDL_BINARY_URL}"; \
-    echo "Downloading hadolint checksum from: ${HDL_CHECKSUM_URL}"; \
-    # Download binary and checksum
-    curl -fsSL "$HDL_BINARY_URL" -o /tmp/hadolint; \
-    curl -fsSL "$HDL_CHECKSUM_URL" -o /tmp/hadolint.sha256; \
-    # Extract expected checksum from the checksum file
-    EXPECTED_SHA256=$(cut -d' ' -f1 /tmp/hadolint.sha256); \
-    echo "Expected SHA256: ${EXPECTED_SHA256}"; \
-    # Calculate actual checksum of downloaded binary
-    ACTUAL_SHA256=$(sha256sum /tmp/hadolint | cut -d' ' -f1); \
-    echo "Actual SHA256: ${ACTUAL_SHA256}"; \
-    # Verify checksums match
-    if [ "$EXPECTED_SHA256" = "$ACTUAL_SHA256" ]; then \
-        echo "✅ SHA256 checksum verification successful"; \
-    else \
-        echo "❌ SHA256 checksum verification failed!"; \
-        echo "Expected: ${EXPECTED_SHA256}"; \
-        echo "Actual: ${ACTUAL_SHA256}"; \
-        exit 1; \
-    fi; \
-    # Install the verified binary
-    mv /tmp/hadolint /usr/local/bin/hadolint; \
-    chmod +x /usr/local/bin/hadolint; \
-    rm /tmp/hadolint.sha256; \
+    # Install Podman and related tools from Ubuntu repositories
+    apt-get update -qq && \
+    apt-get install -y --no-install-recommends \
+        podman \
+        buildah \
+        skopeo \
+        fuse-overlayfs \
+        slirp4netns && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    # Configure Podman registries for Docker Hub compatibility
+    mkdir -p /etc/containers && \
+    cat > /etc/containers/registries.conf << 'EOF'
+unqualified-search-registries = ["docker.io"]
+
+[[registry]]
+prefix = "docker.io"
+location = "docker.io"
+
+[[registry]]
+prefix = "quay.io" 
+location = "quay.io"
+
+[[registry]]
+prefix = "registry.fedoraproject.org"
+location = "registry.fedoraproject.org"
+EOF
+
+# Create Docker compatibility aliases and verify installation
+RUN set -e; \
+    # Create Docker compatibility alias
+    echo '#!/bin/bash' > /usr/local/bin/docker && \
+    echo 'exec podman "$@"' >> /usr/local/bin/docker && \
+    chmod +x /usr/local/bin/docker; \
+    # Create docker-compose compatibility alias
+    echo '#!/bin/bash' > /usr/local/bin/docker-compose && \
+    echo 'exec podman-compose "$@"' >> /usr/local/bin/docker-compose && \
+    chmod +x /usr/local/bin/docker-compose; \
     # Verify installation
-    hadolint --version
+    podman --version && \
+    buildah --version && \
+    skopeo --version && \
+    echo "Docker compatibility: $(docker --version)"
+
 # ---------------------------------------------------------------------------
 # Install eza (modern replacement for ls) using official Debian/Ubuntu repo
 # ---------------------------------------------------------------------------
@@ -268,9 +280,9 @@ RUN set -e; \
     RELEASE_INFO=$(curl -s https://api.github.com/repos/charmbracelet/glow/releases/latest); \
     GLOW_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
     echo "Installing glow version: ${GLOW_VERSION}"; \
-    # Construct URL for .deb package (glow uses different naming for x86_64 vs arm64)
+    # Construct URL for .deb package (glow uses consistent naming for both architectures)
     if [ "$GLOW_ARCH" = "x86_64" ]; then \
-        GLOW_DEB_URL="https://github.com/charmbracelet/glow/releases/download/${GLOW_VERSION}/glow_${GLOW_VERSION#v}_linux_amd64.deb"; \
+        GLOW_DEB_URL="https://github.com/charmbracelet/glow/releases/download/${GLOW_VERSION}/glow_${GLOW_VERSION#v}_amd64.deb"; \
     else \
         GLOW_DEB_URL="https://github.com/charmbracelet/glow/releases/download/${GLOW_VERSION}/glow_${GLOW_VERSION#v}_${GLOW_ARCH}.deb"; \
     fi; \
@@ -348,40 +360,51 @@ RUN set -e; \
     difft --version
 
 # ---------------------------------------------------------------------------
-# Install latest Go from official source (Ubuntu's version is outdated)
+# Install Go - use apt for AMD64 to avoid QEMU emulation issues
 # ---------------------------------------------------------------------------
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 RUN set -e; \
     ARCH="$(dpkg --print-architecture)"; \
     case "$ARCH" in \
-      amd64) GO_ARCH="amd64" ;; \
-      arm64) GO_ARCH="arm64" ;; \
-      *) echo "Unsupported arch for Go: $ARCH (supported: amd64, arm64)"; exit 1 ;; \
-    esac; \
-    LATEST_GO_VERSION="$(curl -fsSL "https://go.dev/VERSION?m=text" | head -n1)"; \
-    GO_URL="https://go.dev/dl/${LATEST_GO_VERSION}.linux-${GO_ARCH}.tar.gz"; \
-    GO_SIG_URL="https://go.dev/dl/${LATEST_GO_VERSION}.linux-${GO_ARCH}.tar.gz.asc"; \
-    echo "Installing Go ${LATEST_GO_VERSION} for ${GO_ARCH} from ${GO_URL}"; \
-    # Download Go tarball and signature
-    curl -fsSL "${GO_URL}" -o /tmp/go.tar.gz; \
-    curl -fsSL "${GO_SIG_URL}" -o /tmp/go.tar.gz.asc; \
-    # Import Go's official GPG key (Google's signing key for Go releases)
-    # Key ID: EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796
-    gpg --batch --keyserver keyserver.ubuntu.com --recv-keys EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796 || \
-    gpg --batch --keyserver keys.openpgp.org --recv-keys EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796 || \
-    gpg --batch --keyserver pgp.mit.edu --recv-keys EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796; \
-    # Verify the signature
-    echo "Verifying Go tarball signature..."; \
-    gpg --batch --verify /tmp/go.tar.gz.asc /tmp/go.tar.gz; \
-    echo "✅ Go tarball signature verified successfully"; \
-    # Install Go
-    rm -rf /usr/local/go; \
-    tar -C /usr/local -xzf /tmp/go.tar.gz; \
-    rm /tmp/go.tar.gz /tmp/go.tar.gz.asc; \
-    echo "Installed Go version: ${LATEST_GO_VERSION}"
-
-# Add Go to PATH for all users
-ENV PATH=$PATH:/usr/local/go/bin
+      amd64) \
+        echo "Installing Go from Ubuntu apt repository for AMD64 (avoids QEMU emulation issues)"; \
+        apt-get update -qq && \
+        apt-get install -y --no-install-recommends golang-go && \
+        apt-get clean && rm -rf /var/lib/apt/lists/*; \
+        GO_VERSION=$(go version | awk '{print $3}'); \
+        echo "Installed Go version: ${GO_VERSION} from apt"; \
+        ;; \
+      arm64) \
+        echo "Installing latest Go from official source for ARM64"; \
+        LATEST_GO_VERSION="$(curl -fsSL "https://go.dev/VERSION?m=text" | head -n1)"; \
+        GO_URL="https://go.dev/dl/${LATEST_GO_VERSION}.linux-arm64.tar.gz"; \
+        GO_SIG_URL="https://go.dev/dl/${LATEST_GO_VERSION}.linux-arm64.tar.gz.asc"; \
+        echo "Installing Go ${LATEST_GO_VERSION} for arm64 from ${GO_URL}"; \
+        # Download Go tarball and signature
+        curl -fsSL "${GO_URL}" -o /tmp/go.tar.gz; \
+        curl -fsSL "${GO_SIG_URL}" -o /tmp/go.tar.gz.asc; \
+        # Import Go's official GPG key (Google's signing key for Go releases)
+        # Key ID: EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796
+        gpg --batch --keyserver keyserver.ubuntu.com --recv-keys EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796 || \
+        gpg --batch --keyserver keys.openpgp.org --recv-keys EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796 || \
+        gpg --batch --keyserver pgp.mit.edu --recv-keys EB4C1BFD4F042F6DDDCCEC917721F63BD38B4796; \
+        # Verify the signature
+        echo "Verifying Go tarball signature..."; \
+        gpg --batch --verify /tmp/go.tar.gz.asc /tmp/go.tar.gz; \
+        echo "✅ Go tarball signature verified successfully"; \
+        # Install Go
+        rm -rf /usr/local/go; \
+        tar -C /usr/local -xzf /tmp/go.tar.gz; \
+        rm /tmp/go.tar.gz /tmp/go.tar.gz.asc; \
+        echo "Installed Go version: ${LATEST_GO_VERSION}"; \
+        # Add Go to PATH for all users
+        echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/environment; \
+        ;; \
+      *) \
+        echo "Unsupported arch for Go: $ARCH (supported: amd64, arm64)"; \
+        exit 1; \
+        ;; \
+    esac
 
 # ---------------------------------------------------------------------------
 # Install latest stable Neovim binary
@@ -564,12 +587,12 @@ RUN chown -R me:me /home/me
 # Copy files from the dotfiles directory into the image. These provide
 # sensible defaults but can be overridden by mounting or copying the
 # user's actual dotfiles when running the container.
+# Note: Neovim config removed - users can set up their own plugins and configuration
 # ---------------------------------------------------------------------------
 COPY dotfiles/tmux.conf /home/me/.tmux.conf
 COPY dotfiles/Rprofile /home/me/.Rprofile
 COPY dotfiles/lintr /home/me/.lintr
 RUN mkdir -p /home/me/.config
-COPY dotfiles/config/nvim/ /home/me/.config/nvim/
 # ---------------------------------------------------------------------------
 # Set file ownership for all copied files
 # ---------------------------------------------------------------------------
@@ -602,8 +625,26 @@ USER me
 ENV GOPATH=/home/me/go
 ENV PATH=$PATH:$GOPATH/bin:/usr/local/go/bin
 RUN mkdir -p $GOPATH/bin && \
-    go install github.com/cweill/gotests/gotests@latest && \
-    go install golang.org/x/tools/gopls@latest
+    # Use apt packages for AMD64 to avoid Go compiler segfaults, compile from source for other architectures
+    if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+        echo "Using apt packages and pre-built binaries for Go tools on AMD64";\
+    else \
+        go install github.com/cweill/gotests/gotests@latest && \
+        go install golang.org/x/tools/gopls@latest; \
+    fi
+
+# Install Go tools for AMD64 using apt (as root) to avoid compiler segfaults
+USER root
+RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+        echo "Installing Go tools via apt on AMD64 to avoid compiler segfaults..." && \
+        apt-get update && \
+        apt-get install -y --no-install-recommends golang-golang-x-tools && \
+        apt-get clean && rm -rf /var/lib/apt/lists/* && \
+        echo "✅ gopls installed via apt (gotests skipped on AMD64 due to availability)"; \
+    fi
+
+# Switch back to 'me' user
+USER me
 
 # Install Python development tools for nvim
 RUN pip3 install --user --break-system-packages \
@@ -611,7 +652,8 @@ RUN pip3 install --user --break-system-packages \
     black \
     flake8 \
     mypy \
-    isort
+    isort \
+    podman-compose
 
 # Update PATH to include local pip installations
 ENV PATH=$PATH:/home/me/.local/bin
@@ -1073,42 +1115,80 @@ RUN apt-get update -qq && \
 # the rstan R package to work properly. CmdStan provides the Stan compiler
 # and runtime that rstan uses behind the scenes.
 # ---------------------------------------------------------------------------
+ARG CMDSTAN_JOBS
 RUN set -e; \
-    echo "Installing CmdStan..."; \
-    # Create directory for CmdStan
-    mkdir -p /opt/cmdstan; \
-    cd /opt/cmdstan; \
-    # Get the latest CmdStan release info from GitHub API
-    RELEASE_INFO=$(curl -fsSL https://api.github.com/repos/stan-dev/cmdstan/releases/latest); \
-    CMDSTAN_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
-    # Remove 'v' prefix from version for filename (e.g., v2.36.0 -> 2.36.0)
-    CMDSTAN_VERSION_CLEAN=$(echo "$CMDSTAN_VERSION" | sed 's/^v//'); \
-    echo "Installing CmdStan version: ${CMDSTAN_VERSION} (filename version: ${CMDSTAN_VERSION_CLEAN})"; \
-    # Construct URL for tarball (CmdStan uses version without 'v' prefix in filename)
-    CMDSTAN_URL="https://github.com/stan-dev/cmdstan/releases/download/${CMDSTAN_VERSION}/cmdstan-${CMDSTAN_VERSION_CLEAN}.tar.gz"; \
-    echo "Downloading CmdStan tarball from: ${CMDSTAN_URL}"; \
-    # Download tarball (CmdStan doesn't provide checksums, so we generate SHA256 for transparency)
-    curl -fsSL "$CMDSTAN_URL" -o cmdstan.tar.gz; \
-    # Generate and display SHA256 sum for verification/transparency
-    echo "Generating SHA256 sum for verification:"; \
-    CMDSTAN_SHA256=$(sha256sum cmdstan.tar.gz | cut -d' ' -f1); \
-    echo "SHA256: ${CMDSTAN_SHA256}"; \
-    echo "✅ CmdStan ${CMDSTAN_VERSION} downloaded successfully"; \
-    # Extract the tarball
-    tar -xzf cmdstan.tar.gz --strip-components=1; \
-    rm cmdstan.tar.gz; \
-    # Build CmdStan (this compiles the Stan compiler and math library)
-    echo "Building CmdStan (this may take several minutes)..."; \
-    # Use limited parallelism to avoid memory issues and build timeouts
-    NPROC=$(nproc); \
-    JOBS=$((NPROC > 4 ? 4 : NPROC)); \
-    echo "Using ${JOBS} parallel jobs for CmdStan build (out of ${NPROC} available cores)"; \
-    make build -j${JOBS}; \
-    # Set environment variable for CmdStan path
-    echo "export CMDSTAN=/opt/cmdstan" >> /etc/environment; \
-    # Verify installation
-    echo "CmdStan installed successfully at /opt/cmdstan"; \
-    ls -la /opt/cmdstan/bin/
+    ARCH="$(dpkg --print-architecture)"; \
+    echo "Installing CmdStan (arch=${ARCH})..."; \
+    if [ "${ARCH}" = "amd64" ]; then \
+        echo "Detected AMD64: installing precompiled CmdStan Debian package (avoids source compile)."; \
+        apt-get update -qq; \
+        # Install cmdstan package (provides a pre-built toolchain on official Ubuntu repos for amd64)
+        if apt-cache show cmdstan 2>/dev/null | grep -q '^Package: cmdstan'; then \
+            apt-get install -y --no-install-recommends cmdstan; \
+        else \
+            echo "cmdstan Debian package not found in apt sources; falling back to source build."; \
+            ARCH_FALLBACK=1; \
+        fi; \
+        if [ -z "${ARCH_FALLBACK}" ]; then \
+            # Determine installation directory from known locations
+            if [ -d /usr/lib/cmdstan ]; then CMDSTAN_DIR=/usr/lib/cmdstan; \
+            elif [ -d /usr/share/cmdstan ]; then CMDSTAN_DIR=/usr/share/cmdstan; \
+            else \
+                # Fallback: search for stanc binary to infer path
+                STANC_PATH="$(command -v stanc || true)"; \
+                if [ -n "$STANC_PATH" ]; then \
+                    # Typically /usr/bin/stanc -> real binary under /usr/lib/cmdstan/bin/stanc
+                    CANDIDATE="$(dirname "$(readlink -f "$STANC_PATH")")/.."; \
+                    CANDIDATE="$(readlink -f "$CANDIDATE")"; \
+                    if [ -d "$CANDIDATE/bin" ]; then CMDSTAN_DIR="$CANDIDATE"; fi; \
+                fi; \
+            fi; \
+            if [ -z "$CMDSTAN_DIR" ] || [ ! -x "$CMDSTAN_DIR/bin/stanc" ]; then \
+                echo "Could not validate precompiled cmdstan directory; falling back to source build."; \
+                ARCH_FALLBACK=1; \
+            else \
+                echo "✅ Using precompiled CmdStan at $CMDSTAN_DIR"; \
+                echo "export CMDSTAN=$CMDSTAN_DIR" >> /etc/environment; \
+                ln -s "$CMDSTAN_DIR" /opt/cmdstan || true; \
+            fi; \
+        fi; \
+        # Clean apt lists if successful precompiled path used
+        if [ -z "${ARCH_FALLBACK}" ]; then \
+            rm -rf /var/lib/apt/lists/*; \
+        fi; \
+    fi; \
+    if [ "${ARCH}" != "amd64" ] || [ -n "${ARCH_FALLBACK}" ]; then \
+        echo "Building CmdStan from source (arch=${ARCH})..."; \
+        mkdir -p /opt/cmdstan; \
+        cd /opt/cmdstan; \
+        RELEASE_INFO=$(curl -fsSL https://api.github.com/repos/stan-dev/cmdstan/releases/latest); \
+        CMDSTAN_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
+        CMDSTAN_VERSION_CLEAN=$(echo "$CMDSTAN_VERSION" | sed 's/^v//'); \
+        echo "Latest CmdStan release: ${CMDSTAN_VERSION}"; \
+        CMDSTAN_URL="https://github.com/stan-dev/cmdstan/releases/download/${CMDSTAN_VERSION}/cmdstan-${CMDSTAN_VERSION_CLEAN}.tar.gz"; \
+        echo "Downloading from: ${CMDSTAN_URL}"; \
+        curl -fsSL "$CMDSTAN_URL" -o cmdstan.tar.gz; \
+        CMDSTAN_SHA256=$(sha256sum cmdstan.tar.gz | cut -d' ' -f1); \
+        echo "SHA256: ${CMDSTAN_SHA256}"; \
+        tar -xzf cmdstan.tar.gz --strip-components=1; \
+        rm cmdstan.tar.gz; \
+        NPROC=$(nproc); \
+        # Limit parallelism for memory; allow override via build arg CMDSTAN_JOBS
+        : "${CMDSTAN_JOBS:=2}"; \
+        JOBS=$(( CMDSTAN_JOBS < NPROC ? CMDSTAN_JOBS : NPROC )); \
+        echo "Compiling CmdStan with ${JOBS} job(s) (requested=${CMDSTAN_JOBS}, cores=${NPROC})"; \
+        # Use lower optimization to reduce memory footprint
+        export CXXFLAGS="-O2"; \
+        if ! make build STAN_NO_PCH=true -j${JOBS}; then \
+            echo "Parallel build failed; retrying single-threaded with -O1"; \
+            make clean-all || true; \
+            export CXXFLAGS="-O1"; \
+            make build STAN_NO_PCH=true -j1; \
+        fi; \
+        echo "export CMDSTAN=/opt/cmdstan" >> /etc/environment; \
+        echo "✅ CmdStan built successfully at /opt/cmdstan"; \
+        ls -la /opt/cmdstan/bin/; \
+    fi
 
 # Set CmdStan environment variable for current build
 ENV CMDSTAN=/opt/cmdstan
@@ -1239,10 +1319,16 @@ RUN --mount=type=cache,target=/root/.cache/R/pak \
     export R_COMPILE_PKGS=1; \
     export R_KEEP_PKG_SOURCE=yes; \
     export TMPDIR=/tmp/R-pkg-cache; \
+     # Exclude btw on AMD64 -- it doesn't compile, even in a native container (on codespaces)
+    EXCLUDE_LIST=""; \
+    if [ "$TARGETARCH" = "amd64" ]; then \
+        EXCLUDE_LIST="btw"; \
+        echo "Note: Excluding btw, httpgd, colorout packages for AMD64 build"; \
+    fi; \
     if [ "$DEBUG_PACKAGES" = "true" ]; then \
-        /tmp/install_r_packages.sh --debug; \
+        /tmp/install_r_packages.sh --debug --exclude-packages "$EXCLUDE_LIST"; \
     else \
-        /tmp/install_r_packages.sh; \
+        /tmp/install_r_packages.sh --exclude-packages "$EXCLUDE_LIST"; \
     fi
 
 # ---------------------------------------------------------------------------
@@ -1255,7 +1341,6 @@ RUN --mount=type=cache,target=/root/.cache/R/pak \
 # This significantly speeds up container startup since extensions don't need to
 # be downloaded and installed each time the container starts.
 # ---------------------------------------------------------------------------
-
 FROM base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak AS base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode
 
 # Switch to the 'me' user for VS Code server installation
@@ -1321,13 +1406,18 @@ USER root
 # GitHub Actions and Bitbucket Pipelines. Optimizations include:
 # - Aggressive build tools removal after R package installation
 # - Complete documentation cleanup (help files, PDFs, vignettes)
-# - Only Stan packages excluded (no CmdStan in CI image)
+# - Only Stan-dependent packages excluded (no CmdStan in CI image)
 # - Cache and temporary file cleanup
 # - Retains full geospatial capabilities (sf, terra, s2) for mapping
 # Target: ~700MB+ space savings from 4GB to ~3.3GB
 # ---------------------------------------------------------------------------
 
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS r-container
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04 AS r-ci
+
+# Container metadata labels for GitHub Container Registry integration
+LABEL org.opencontainers.image.source="https://github.com/guttmacher/research-stack"
+LABEL org.opencontainers.image.description="R environment for CI workflows"
+LABEL org.opencontainers.image.licenses="MIT"
 
 USER root
 RUN groupmod -g 2020 dialout || true;     groupmod -g 20 staff || true;     set -e;     VS_UID="$(id -u vscode)";     VS_GID="$(id -g vscode)";     VS_PRIMARY_GROUP_NAME="$(getent group "${VS_GID}" | cut -d: -f1)";     VS_GROUPS="$(id -nG vscode | tr ' ' ',')";     if ! getent group me > /dev/null 2>&1; then groupadd -o -g "${VS_GID}" me || true; fi;     if ! id -u me > /dev/null 2>&1; then useradd -o -u "${VS_UID}" -g "${VS_GID}" -M -d /home/me -s /bin/zsh me; fi;     if [ -d /home/vscode ] && [ ! -e /home/me ]; then mv /home/vscode /home/me; fi;     usermod -d /home/me vscode;     usermod -d /home/me me;     for my_grp in $(echo "${VS_GROUPS}" | tr ',' ' '); do       if [ "${my_grp}" = "${VS_PRIMARY_GROUP_NAME}" ]; then continue; fi;       usermod -aG "${my_grp}" me || true;     done;     chown -R "${VS_UID}:${VS_GID}" /home/me || true
@@ -1339,6 +1429,7 @@ RUN groupmod -g 2020 dialout || true;     groupmod -g 20 staff || true;     set 
 # Ubuntu's default R version is often outdated. We add the official CRAN
 # repository to get the latest stable R version.
 # ---------------------------------------------------------------------------
+ARG R_BUILD_JOBS=2
 RUN set -e; \
     # Add CRAN GPG key
     curl -fsSL https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | \
@@ -1361,6 +1452,16 @@ RUN set -e; \
         libcurl4-openssl-dev \
         libssl-dev \
         libgit2-dev \
+        # Additional dependencies for pak and R packages
+        libfontconfig1-dev \
+        libcairo2-dev \
+        libxt-dev \
+        libharfbuzz-dev \
+        libfribidi-dev \
+        libfreetype6-dev \
+        libpng-dev \
+        libtiff5-dev \
+        libjpeg-dev \
         # Additional dependencies for specific R packages
         libgdal-dev \
         libproj-dev \
@@ -1372,7 +1473,7 @@ RUN set -e; \
         && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# CmdStan removed in r-container (CI image). Use full-container if you need Stan compilation.
+# CmdStan removed in r-ci (CI image). Use full if you need Stan compilation.
 
 # ---------------------------------------------------------------------------
 # JAGS installation (same as stage 9)
@@ -1401,7 +1502,7 @@ FFLAGS=-O3 -mtune=native
 FCFLAGS=-O3 -mtune=native
 
 # Use all available cores for compilation (adjust if needed)
-MAKEFLAGS=-j$(nproc)
+MAKEFLAGS=-j${R_BUILD_JOBS}
 EOF
 RUN chown -R me:me /home/me/.R && echo "✅ R compilation configuration applied"
 
@@ -1433,37 +1534,72 @@ RUN set -e; \
     R_MAJOR_MINOR=$(echo "$R_VERSION" | cut -d. -f1-2); \
     SITE_LIB_DIR="/usr/local/lib/R/site-library-${R_MAJOR_MINOR}"; \
     export R_LIBS_SITE="$SITE_LIB_DIR"; \
-    export MAKEFLAGS="-j$(nproc)"; \
+    export MAKEFLAGS="-j${R_BUILD_JOBS}"; \
     export TMPDIR=/tmp/R-pkg-cache; \
+    mkdir -p "$TMPDIR"; \
     echo "R package installation environment configured"; \
-    # Install pak from CRAN
-    R -e "install.packages('pak', repos='https://cloud.r-project.org/', dependencies=TRUE)"; \
-    # Verify pak installation
-    R -e "if (!require('pak', quietly=TRUE)) { stop('pak installation failed') } else { cat('✅ pak installed successfully\n') }"
+    echo "R_VERSION: $R_VERSION"; \
+    echo "R_MAJOR_MINOR: $R_MAJOR_MINOR"; \
+    echo "SITE_LIB_DIR: $SITE_LIB_DIR"; \
+    echo "R_LIBS_SITE: $R_LIBS_SITE"; \
+    # Configure R to prefer binary packages on AMD64
+    R -e "cat('Platform info:\\n'); cat('OS:', R.Version()\$os, '\\n'); cat('Arch:', R.Version()\$arch, '\\n'); cat('Platform:', .Platform\$pkgType, '\\n'); options(repos = c(CRAN = 'https://cloud.r-project.org/', RSPM = 'https://packagemanager.rstudio.com/all/latest')); if (R.Version()\$arch == 'x86_64' && R.Version()\$os == 'linux-gnu') { options(pkgType = 'binary'); options(install.packages.compile.from.source = 'never'); cat('Configured to use binary packages on AMD64\\n'); } else { cat('Using default package type for', R.Version()\$arch, R.Version()\$os, '\\n'); }; cat('Package type:', getOption('pkgType'), '\\n'); cat('Repositories:\\n'); print(getOption('repos'));"; \
+    # Install pak using the official installation script (downloads pre-built binaries)
+    R -e " \
+        # Use the official pak installation method that downloads binaries
+        install.packages('pak', repos = sprintf( \
+            'https://r-lib.github.io/p/pak/stable/%s/%s/%s', \
+            .Platform\$pkgType, \
+            R.Version()\$os, \
+            R.Version()\$arch \
+        )); \
+    " || R -e " \
+        # Fallback: try the devel version if stable fails
+        install.packages('pak', repos = sprintf( \
+            'https://r-lib.github.io/p/pak/devel/%s/%s/%s', \
+            .Platform\$pkgType, \
+            R.Version()\$os, \
+            R.Version()\$arch \
+        )); \
+    " || R -e " \
+        # Final fallback: use the bootstrap script
+        source('https://r-lib.github.io/p/pak/stable/INSTALL'); \
+    "; \
+    # Verify pak installation and configure it for binary packages
+    R -e " \
+        if (!require('pak', quietly = FALSE)) { \
+            cat('pak package not found in library paths:\n'); \
+            print(.libPaths()); \
+            cat('Available packages:\n'); \
+            print(installed.packages()[,c('Package', 'LibPath')]); \
+            stop('pak installation failed'); \
+        } else { \
+            cat('pak installed successfully\n'); \
+            cat('pak version:', as.character(packageVersion('pak')), '\n'); \
+            # Configure pak to prefer binary packages
+            pak::pak_setup(); \
+            cat('pak configured for binary package preference\n'); \
+        } \
+    "
 
 # Copy and run R package installation script with aggressive optimization
 COPY install_r_packages.sh /tmp/install_r_packages.sh
 COPY R_packages.txt /tmp/R_packages.txt
 RUN set -e; \
     chmod +x /tmp/install_r_packages.sh && \
-    # SELECTIVE EXCLUSION: Only exclude Stan packages (no CmdStan in CI image)
-    grep -E '^(rstan|cmdstanr|rstanarm|brms|shinystan)$' /tmp/R_packages.txt > /tmp/excluded_packages.txt || true; \
-    grep -vf /tmp/excluded_packages.txt /tmp/R_packages.txt > /tmp/R_packages.filtered.txt; \
-    echo "Excluded packages (Stan only - no CmdStan in CI image):"; \
-    cat /tmp/excluded_packages.txt || echo "None"; \
-    \
     # Set up environment for R package installation
     R_VERSION=$(R --version | head -n1 | sed "s/R version \([0-9.]*\).*/\1/"); \
     R_MAJOR_MINOR=$(echo "$R_VERSION" | cut -d. -f1-2); \
     SITE_LIB_DIR="/usr/local/lib/R/site-library-${R_MAJOR_MINOR}"; \
     export R_LIBS_SITE="$SITE_LIB_DIR"; \
-    export MAKEFLAGS="-j$(nproc)"; \
+    export MAKEFLAGS="-j${R_BUILD_JOBS}"; \
     export TMPDIR=/tmp/R-pkg-cache; \
     mkdir -p "$TMPDIR"; \
     \
-    # Install R packages
-    echo "Installing R packages (Stan packages excluded - no CmdStan in CI image)..."; \
-    /tmp/install_r_packages.sh --packages-file /tmp/R_packages.filtered.txt; \
+    # Install R packages with unified exclusion system
+    # Exclude Stan packages (no CmdStan in CI image) and GitHub packages for r-ci
+    echo "Installing R packages with exclusions for r-ci (CI-focused image)..."; \
+    /tmp/install_r_packages.sh --packages-file /tmp/R_packages.txt --exclude-packages "rstan cmdstanr rstanarm brms shinystan btw httpgd colorout"; \
     echo "✅ R package installation completed"; \
     \
     # AGGRESSIVE BUILD TOOLS REMOVAL (major space savings)
@@ -1529,8 +1665,6 @@ RUN set -e; \
         /tmp/R-pkg-cache \
         /tmp/install_r_packages.sh \
         /tmp/R_packages.txt \
-        /tmp/R_packages.filtered.txt \
-        /tmp/excluded_packages.txt \
         /root/.cache \
         /home/me/.cache \
         /var/cache/apt/* \
@@ -1585,7 +1719,7 @@ USER me
 # This stage creates the complete development environment with all tools
 # ---------------------------------------------------------------------------
 
-FROM base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode AS full-container
+FROM base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode AS full
 
 USER root
 

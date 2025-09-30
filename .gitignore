@@ -26,3 +26,5 @@ build/
 .tmp/
 Dockerfile.backup
 .aider*
+full-amd64.oci
+r-ci-amd64.oci

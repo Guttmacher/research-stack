@@ -69,6 +69,7 @@ future
 gargle
 gdata
 generics
+geodata
 GGally
 ggdist
 ggforce
