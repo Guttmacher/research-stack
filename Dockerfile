@@ -1055,7 +1055,7 @@ RUN set -e; \
     # Install pip using Python 3.13's built-in ensurepip (without upgrade to avoid conflicts)
     python3.13 -m ensurepip && \
     # Install common development tools
-    python3.13 -m pip install black flake8 mypy isort && \
+    python3.13 -m pip install black flake8 mypy isort uv && \
     # Verify installation
     python3 --version && \
     python3.13 --version && \
