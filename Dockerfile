@@ -12,7 +12,7 @@
 #             Stage 5 (base-nvim-tex-pandoc-haskell): Compile Haskell to compile pandoc-crossref.
 #             Stage 6 (base-nvim-tex-pandoc-haskell-crossref): Add pandoc-crossref for numbering figures, equations, tables.
 #             Stage 7 (base-nvim-tex-pandoc-haskell-crossref-plus): Add extra LaTeX packages via tlmgr (e.g. soul)
-#             Stage 8 (base-nvim-tex-pandoc-haskell-crossref-plus-py): Add Python 3.14 using deadsnakes PPA.
+#             Stage 8 (base-nvim-tex-pandoc-haskell-crossref-plus-py): Add Python 3.13 using deadsnakes PPA.
 #             Stage 9 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r): Install R, CmdStan, and JAGS.
 #             Stage 10 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak): Install a comprehensive suite of R packages.
 #             Stage 11 (base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode): Setup VS Code server with pre-installed extensions.
@@ -1023,9 +1023,9 @@ USER root
 # ---------------------------------------------------------------------------
 
 # ===========================================================================
-# STAGE 8: PYTHON 3.14 INSTALLATION          (base-nvim-tex-pandoc-haskell-crossref-plus-py)
+# STAGE 8: PYTHON 3.13 INSTALLATION          (base-nvim-tex-pandoc-haskell-crossref-plus-py)
 # ===========================================================================
-# This stage adds Python 3.14 using the deadsnakes PPA for the latest Python version.
+# This stage adds Python 3.13 using the deadsnakes PPA for the latest Python version.
 # ---------------------------------------------------------------------------
 
 FROM base-nvim-tex-pandoc-haskell-crossref-plus AS base-nvim-tex-pandoc-haskell-crossref-plus-py
@@ -1038,28 +1038,28 @@ USER root
 # We install Python 3.14 and let it manage the pip installation.
 # ---------------------------------------------------------------------------
 RUN set -e; \
-    echo "Adding deadsnakes PPA for Python 3.14..."; \
+    echo "Adding deadsnakes PPA for Python 3.13..."; \
     apt-get update -qq && \
     apt-get install -y --no-install-recommends software-properties-common && \
     add-apt-repository ppa:deadsnakes/ppa -y && \
     apt-get update -qq && \
-    echo "Installing Python 3.14..."; \
+    echo "Installing Python 3.13..."; \
     apt-get install -y --no-install-recommends \
-        python3.14 \
-        python3.14-dev \
-        python3.14-venv && \
-    # Update alternatives to make python3.14 the default python3
+        python3.13 \
+        python3.13-dev \
+        python3.13-venv && \
+    # Update alternatives to make python3.13 the default python3
     # Note: python3 defaults to the alternative with the highest priority number
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1 && \
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.14 2 && \
-    # Install pip using Python 3.14's built-in ensurepip (without upgrade to avoid conflicts)
-    python3.14 -m ensurepip && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.13 2 && \
+    # Install pip using Python 3.13's built-in ensurepip (without upgrade to avoid conflicts)
+    python3.13 -m ensurepip && \
     # Install common development tools and Stan packages
-    python3.14 -m pip install black flake8 mypy isort uv cmdstanpy arviz xarray pandas numpy matplotlib seaborn jax numpyro torch pyro-ppl scikit-learn scipy && \
+    python3.13 -m pip install black flake8 mypy isort uv cmdstanpy pystan arviz xarray pandas numpy matplotlib seaborn jax numpyro torch pyro-ppl tensorflow tensorflow-probability scikit-learn scipy && \
     # Verify installation
     python3 --version && \
-    python3.14 --version && \
-    python3.14 -m pip --version && \
+    python3.13 --version && \
+    python3.13 -m pip --version && \
     # Clean up
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
