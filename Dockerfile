@@ -1055,7 +1055,7 @@ RUN set -e; \
     # Install pip using Python 3.14's built-in ensurepip (without upgrade to avoid conflicts)
     python3.14 -m ensurepip && \
     # Install common development tools and Stan packages
-    python3.14 -m pip install black flake8 mypy isort uv cmdstanpy pystan arviz xarray pandas numpy matplotlib seaborn jax numpyro torch pyro-ppl scikit-learn scipy && \
+    python3.14 -m pip install black flake8 mypy isort uv cmdstanpy arviz xarray pandas numpy matplotlib seaborn jax numpyro torch pyro-ppl scikit-learn scipy && \
     # Verify installation
     python3 --version && \
     python3.14 --version && \
