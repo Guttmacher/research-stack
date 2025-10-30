@@ -204,6 +204,11 @@ rprojroot
 rstan
 rstanarm
 rstantools
+cmdstanr
+bayesplot
+posterior
+loo
+tidybayes
 rstatix
 rstudioapi
 rsvg
