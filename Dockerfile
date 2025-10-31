@@ -1082,7 +1082,7 @@ USER root
 # R installation from CRAN
 # ---------------------------------------------------------------------------
 # Ubuntu's default R version is often outdated. We add the official CRAN
-# repository to get the latest stable R release (currently 4.5.1).
+# repository to get the latest stable R release (currently 4.5.2).
 #
 # Steps:
 #   1. Install prerequisite packages (some redundant with above, but safe)
