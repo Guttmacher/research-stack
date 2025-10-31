@@ -314,6 +314,50 @@ else
     fi
 fi
 
+# Install cmdstanr from Stan R-universe repository
+echo -n "🎯 Installing cmdstanr from Stan R-universe... "
+cmdstanr_command="
+cat('📦 Installing cmdstanr...\\\\n')
+flush.console()
+tryCatch({
+    start_time <- Sys.time()
+    install.packages('cmdstanr', repos = c('https://stan-dev.r-universe.dev', getOption('repos')), quiet = TRUE)
+    end_time <- Sys.time()
+    duration <- round(as.numeric(difftime(end_time, start_time, units = 'secs')), 1)
+    cat('✅ Installed cmdstanr in', duration, 'seconds\\\\n')
+    
+    # Test loading
+    library(cmdstanr)
+    if (exists('cmdstan_model')) {
+        cat('SUCCESS\\\\n')
+    } else {
+        cat('FAILED TO LOAD\\\\n')
+        quit(status = 1)
+    }
+}, error = function(e) {
+    cat('ERROR:', conditionMessage(e), '\\\\n')
+    quit(status = 1)
+})
+"
+
+if [[ "$DEBUG_MODE" == "true" ]]; then
+    if echo "$cmdstanr_command" | R --slave --no-restore; then
+        echo "✅"
+        ((installed_count++))
+    else
+        echo "❌"
+        failed_packages+=("cmdstanr")
+    fi
+else
+    if echo "$cmdstanr_command" | R --slave --no-restore >/dev/null 2>&1; then
+        echo "✅"
+        ((installed_count++))
+    else
+        echo "❌"
+        failed_packages+=("cmdstanr")
+    fi
+fi
+
 # Install httpgd from GitHub using pak (skip if excluded)
 if ! is_package_excluded "httpgd"; then
     echo -n "🌐 Installing httpgd from GitHub with pak... "
