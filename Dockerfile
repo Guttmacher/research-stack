@@ -447,33 +447,6 @@ RUN set -e; \
     nvim --version | head -n 1
 
 # ---------------------------------------------------------------------------
-# Install zoxide from GitHub releases
-# ---------------------------------------------------------------------------
-RUN set -e; \
-    ARCH="$(dpkg --print-architecture)"; \
-    case "$ARCH" in \
-      amd64) ZOX_DEB_ARCH="amd64" ;; \
-      arm64) ZOX_DEB_ARCH="arm64" ;; \
-      *) echo "Unsupported arch for zoxide: $ARCH (supported: amd64, arm64)"; exit 1 ;; \
-    esac; \
-    RELEASE_INFO=$(curl -fsSL https://api.github.com/repos/ajeetdsouza/zoxide/releases/latest); \
-    ZOX_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
-    echo "Installing zoxide version: ${ZOX_VERSION}"; \
-    # zoxide assets are typically named like zoxide_${VERSION#v}-1_${ARCH}.deb
-    ZOX_DEB_URL="$(echo "$RELEASE_INFO" | grep browser_download_url | grep -E "zoxide_.*_${ZOX_DEB_ARCH}\\.deb" | head -n 1 | cut -d '"' -f 4)"; \
-    if [ -z "$ZOX_DEB_URL" ]; then \
-      echo "❌ Could not find zoxide .deb for arch ${ZOX_DEB_ARCH}"; exit 1; \
-    fi; \
-    echo "Downloading zoxide .deb from: ${ZOX_DEB_URL}"; \
-    curl -fsSL "$ZOX_DEB_URL" -o /tmp/zoxide.deb; \
-    ZOX_SHA256=$(sha256sum /tmp/zoxide.deb | cut -d' ' -f1); \
-    echo "zoxide .deb SHA256: ${ZOX_SHA256}"; \
-    apt-get update -qq && apt-get install -y --no-install-recommends /tmp/zoxide.deb && \
-    rm /tmp/zoxide.deb && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*; \
-    zoxide --version
-
-# ---------------------------------------------------------------------------
 # Install Zsh plugins via git clone of latest release tags
 # ---------------------------------------------------------------------------
 RUN set -e; \
@@ -1722,6 +1695,32 @@ USER me
 FROM base-nvim-tex-pandoc-haskell-crossref-plus-py-r-pak-vscode AS full
 
 USER root
+
+# ---------------------------------------------------------------------------
+# Install zoxide from GitHub releases (full stack only)
+# ---------------------------------------------------------------------------
+RUN set -e; \
+    ARCH="$(dpkg --print-architecture)"; \
+    case "$ARCH" in \
+      amd64) ZOX_DEB_ARCH="amd64" ;; \
+      arm64) ZOX_DEB_ARCH="arm64" ;; \
+      *) echo "Unsupported arch for zoxide: $ARCH (supported: amd64, arm64)"; exit 1 ;; \
+    esac; \
+    RELEASE_INFO=$(curl -fsSL https://api.github.com/repos/ajeetdsouza/zoxide/releases/latest); \
+    ZOX_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
+    echo "Installing zoxide version: ${ZOX_VERSION}"; \
+    ZOX_DEB_URL="$(echo "$RELEASE_INFO" | grep browser_download_url | grep -E "zoxide_.*_${ZOX_DEB_ARCH}\\.deb" | head -n 1 | cut -d '"' -f 4)"; \
+    if [ -z "$ZOX_DEB_URL" ]; then \
+      echo "❌ Could not find zoxide .deb for arch ${ZOX_DEB_ARCH}"; exit 1; \
+    fi; \
+    echo "Downloading zoxide .deb from: ${ZOX_DEB_URL}"; \
+    curl -fsSL "$ZOX_DEB_URL" -o /tmp/zoxide.deb; \
+    ZOX_SHA256=$(sha256sum /tmp/zoxide.deb | cut -d' ' -f1); \
+    echo "zoxide .deb SHA256: ${ZOX_SHA256}"; \
+    apt-get update -qq && apt-get install -y --no-install-recommends /tmp/zoxide.deb && \
+    rm /tmp/zoxide.deb && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*; \
+    zoxide --version
 
 # Copy and apply shell configuration
 COPY dotfiles/shell-common /tmp/shell-common
