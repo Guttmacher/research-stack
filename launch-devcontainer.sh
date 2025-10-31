@@ -14,9 +14,9 @@ mkdir -p ~/.container/{aws,vscode-server,amazon-q,codex,cache}
 
 # Stop and remove existing container if running
 if docker ps -q -f name=$CONTAINER_NAME | grep -q .; then
-  read -p "Container $CONTAINER_NAME is already running. Restart it? (y/n): " -n 1 -r
+  read -p "Container $CONTAINER_NAME is running. [c]onnect or [r]estart? (c/r): " -n 1 -r
   echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+  if [[ ! $REPLY =~ ^[Rr]$ ]]; then
     echo "Connecting to existing container..."
     docker exec -it $CONTAINER_NAME /bin/zsh
     exit 0
