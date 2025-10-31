@@ -23,6 +23,10 @@ source /usr/local/share/zsh/plugins/zsh-history-substring-search/zsh-history-sub
 bindkey '^[[A' history-substring-search-up
 bindkey '^[[B' history-substring-search-down
 
+# Autosuggestions (ghost text)
+# Plugin path: /usr/local/share/zsh/plugins/zsh-autosuggestions
+source /usr/local/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh
+
 # fd is already installed as fdfind; ensure fd alias exists in PATH
 # Avoid overriding if user already set it elsewhere
 if ! command -v fd >/dev/null 2>&1 && command -v fdfind >/dev/null 2>&1; then

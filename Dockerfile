@@ -469,9 +469,19 @@ RUN set -e; \
     mkdir -p /usr/local/share/zsh/plugins/zsh-history-substring-search; \
     cp -a /tmp/zsh-hss/* /usr/local/share/zsh/plugins/zsh-history-substring-search/; \
     rm -rf /tmp/zsh-hss; \
+    # ---------------------- zsh-autosuggestions ---------------------
+    ZA_REL=$(curl -fsSL https://api.github.com/repos/zsh-users/zsh-autosuggestions/releases/latest); \
+    ZA_TAG=$(echo "$ZA_REL" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
+    echo "Installing zsh-autosuggestions ${ZA_TAG} via git clone"; \
+    rm -rf /tmp/zsh-autosuggestions; \
+    git clone --depth 1 --branch "$ZA_TAG" https://github.com/zsh-users/zsh-autosuggestions.git /tmp/zsh-autosuggestions; \
+    mkdir -p /usr/local/share/zsh/plugins/zsh-autosuggestions; \
+    cp -a /tmp/zsh-autosuggestions/* /usr/local/share/zsh/plugins/zsh-autosuggestions/; \
+    rm -rf /tmp/zsh-autosuggestions; \
     # ------------------------------ verify ----------------------------------
     test -d /usr/local/share/zsh/plugins/zsh-completions/src && \
     test -f /usr/local/share/zsh/plugins/zsh-history-substring-search/zsh-history-substring-search.zsh && \
+    test -f /usr/local/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh && \
     echo "✅ Zsh plugins installed"
 
 # ---------------------------------------------------------------------------
