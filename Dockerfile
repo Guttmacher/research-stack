@@ -470,11 +470,9 @@ RUN set -e; \
     cp -a /tmp/zsh-hss/* /usr/local/share/zsh/plugins/zsh-history-substring-search/; \
     rm -rf /tmp/zsh-hss; \
     # ---------------------- zsh-autosuggestions ---------------------
-    ZA_REL=$(curl -fsSL https://api.github.com/repos/zsh-users/zsh-autosuggestions/releases/latest); \
-    ZA_TAG=$(echo "$ZA_REL" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
-    echo "Installing zsh-autosuggestions ${ZA_TAG} via git clone"; \
+    echo "Installing zsh-autosuggestions from master branch"; \
     rm -rf /tmp/zsh-autosuggestions; \
-    git clone --depth 1 --branch "$ZA_TAG" https://github.com/zsh-users/zsh-autosuggestions.git /tmp/zsh-autosuggestions; \
+    git clone --depth 1 https://github.com/zsh-users/zsh-autosuggestions.git /tmp/zsh-autosuggestions; \
     mkdir -p /usr/local/share/zsh/plugins/zsh-autosuggestions; \
     cp -a /tmp/zsh-autosuggestions/* /usr/local/share/zsh/plugins/zsh-autosuggestions/; \
     rm -rf /tmp/zsh-autosuggestions; \
@@ -575,6 +573,7 @@ RUN chown -R me:me /home/me
 COPY dotfiles/tmux.conf /home/me/.tmux.conf
 COPY dotfiles/Rprofile /home/me/.Rprofile
 COPY dotfiles/lintr /home/me/.lintr
+COPY dotfiles/starship.toml /home/me/.config/starship.toml
 RUN mkdir -p /home/me/.config
 # ---------------------------------------------------------------------------
 # Set file ownership for all copied files
@@ -1731,6 +1730,30 @@ RUN set -e; \
     rm /tmp/zoxide.deb && \
     apt-get clean && rm -rf /var/lib/apt/lists/*; \
     zoxide --version
+
+# ---------------------------------------------------------------------------
+# Install starship from GitHub releases (full stack only)
+# ---------------------------------------------------------------------------
+RUN set -e; \
+    ARCH="$(dpkg --print-architecture)"; \
+    case "$ARCH" in \
+      amd64) STARSHIP_ARCH="x86_64" ;; \
+      arm64) STARSHIP_ARCH="aarch64" ;; \
+      *) echo "Unsupported arch for starship: $ARCH (supported: amd64, arm64)"; exit 1 ;; \
+    esac; \
+    RELEASE_INFO=$(curl -fsSL https://api.github.com/repos/starship/starship/releases/latest); \
+    STARSHIP_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
+    echo "Installing starship version: ${STARSHIP_VERSION}"; \
+    STARSHIP_TAR_URL="https://github.com/starship/starship/releases/download/${STARSHIP_VERSION}/starship-${STARSHIP_ARCH}-unknown-linux-gnu.tar.gz"; \
+    echo "Downloading starship from: ${STARSHIP_TAR_URL}"; \
+    curl -fsSL "$STARSHIP_TAR_URL" -o /tmp/starship.tar.gz; \
+    STARSHIP_SHA256=$(sha256sum /tmp/starship.tar.gz | cut -d' ' -f1); \
+    echo "starship tarball SHA256: ${STARSHIP_SHA256}"; \
+    tar -xzf /tmp/starship.tar.gz -C /tmp; \
+    mv /tmp/starship /usr/local/bin/starship; \
+    chmod +x /usr/local/bin/starship; \
+    rm /tmp/starship.tar.gz; \
+    starship --version
 
 # Copy and apply shell configuration
 COPY dotfiles/shell-common /tmp/shell-common
