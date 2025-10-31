@@ -1,0 +1,219 @@
+# Starship configuration with muted earth tones
+# Warm but subtle colors inspired by nature
+
+format = """
+[\uE0B2](#8B7355)\
+$os$username$hostname\
+[\uE0B0](bg:#A0826D fg:#8B7355)\
+$directory\
+[\uE0B0](fg:#A0826D bg:#B8956A)\
+$git_branch\
+$git_status\
+[\uE0B0](fg:#B8956A bg:#7A8471)\
+$c\
+$elixir\
+$elm\
+$golang\
+$gradle\
+$haskell\
+$java\
+$julia\
+$nodejs\
+$nim\
+$rust\
+$scala\
+$python\
+$rlang\
+$docker_context\
+$conda\
+[\uE0B0](fg:#7A8471 bg:#4A4E4D)\
+${custom.time_with_symbol}\
+[\uE0B0](fg:#4A4E4D)
+$line_break$status$character"""
+
+add_newline = false
+
+[username]
+show_always = false
+style_user = "bg:#8B7355 fg:black"
+style_root = "bg:#8B7355 bold fg:red"
+format = '[ $user@]($style)'
+disabled = false
+
+[hostname]
+ssh_only = true
+style = "bg:#8B7355 fg:black"
+format = '[$hostname ]($style)'
+
+[os]
+style = "bg:#8B7355 fg:black"
+format = "[$symbol]($style)"
+disabled = false
+
+[os.symbols]
+Windows = "󰍲"
+Ubuntu = "󰕈"
+SUSE = ""
+Raspbian = "󰐿"
+Mint = "󰣭"
+Macos = " 󰀵 "
+Manjaro = ""
+Linux = "󰌽"
+Gentoo = "󰣨"
+Fedora = "󰣛"
+Alpine = ""
+Amazon = ""
+Android = ""
+Arch = "󰣇"
+Artix = "󰣇"
+CentOS = ""
+Debian = "󰣚"
+Redhat = "󱄛"
+RedHatEnterprise = "󱄛"
+
+[directory]
+style = "bg:#A0826D fg:black"
+format = "[ $path ]($style)"
+truncation_length = 0
+truncation_symbol = "…/"
+use_logical_path = true
+
+[directory.substitutions]
+"Documents" = "󰈙 "
+"Downloads" = " "
+"Music" = " "
+"Pictures" = " "
+
+[c]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol ($version) ]($style)'
+
+[docker_context]
+symbol = "\uf308"
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol $context ]($style)'
+
+[conda]
+style = "bg:#5D6D5B fg:black"
+format = '[ $symbol $environment ]($style)'
+
+[elixir]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol ($version) ]($style)'
+
+[elm]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol ($version) ]($style)'
+
+[git_branch]
+symbol = "\uE725 "
+style = "bg:#B8956A fg:black"
+format = '[ $symbol$branch ]($style)'
+
+[git_status]
+style = "bg:#B8956A fg:black"
+format = '[$all_status$ahead_behind ]($style)'
+
+[golang]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+
+[gradle]
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+disabled = true
+
+[haskell]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+
+[java]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+disabled = true
+
+[julia]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+disabled = true
+
+[nodejs]
+symbol = ""
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+disabled = true
+
+[nim]
+symbol = "󰆥 "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+disabled = true
+
+[rust]
+symbol = ""
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+
+[scala]
+symbol = " "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+
+[python]
+symbol = "\uF0C3 "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+
+# Disable the regular time module
+[time]
+disabled = true
+
+# Custom time module with moon between 6 PM and 6 AM
+[custom.time_with_symbol]
+command = "bash -c 'h=$(date +%H); t=$(date +%l:%M); if (( h >= 18 || h < 6 )); then echo \"$t \u263e\"; else echo \"$t \u2609\"; fi'"
+when = "true"
+style = "bg:#4A4E4D fg:white"
+format = '[ $output ]($style)'
+
+# Status module to show command failures
+[status]
+disabled = false
+style = "bg:#C17A6B fg:white"
+format = '[ ✘ $status ]($style)'
+map_symbol = false
+
+[line_break]
+disabled = false
+
+[character]
+disabled = false
+success_symbol = '[❯](bold fg:#B8956A)'
+error_symbol = '[❯](bold fg:#C17A6B)'
+vimcmd_symbol = '[](bold fg:cyan)'
+vimcmd_replace_one_symbol = '[](bold fg:purple)'
+vimcmd_replace_symbol = '[](bold fg:purple)'
+vimcmd_visual_symbol = '[](bold fg:yellow)'
+
+[rlang]
+symbol = "\uF080 "
+style = "bg:#7A8471 fg:black"
+format = '[ $symbol($version) ]($style)'
+
+[aws]
+format = '[ $symbol ($profile )($region )([$duration] )]($style)'
+symbol = "  "
+style = "bg:#7A8471 fg:black"
+
+[package]
+format = "[ $symbol $version ]($style)"
+symbol = "󰏗 "
+style = "bg:#7A8471 fg:black"
+
+
