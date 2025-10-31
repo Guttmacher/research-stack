@@ -14,6 +14,12 @@
        ./q/install.sh --no-confirm && \
        rm -rf q.zip q
 
+   # Install CAO (CLI Agent Orchestrator) and built-in agents
+   RUN uv tool install git+https://github.com/awslabs/cli-agent-orchestrator.git@main --upgrade && \
+       cao install code_supervisor && \
+       cao install developer && \
+       cao install reviewer
+
    # Ensure Q CLI is in PATH for all users
    ENV PATH="/home/me/.local/bin:$PATH"
 
