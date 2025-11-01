@@ -9,6 +9,24 @@ if [[ "$1" == "--rebuild" ]]; then
   REBUILD=true
 fi
 
+# Check if Docker is available (colima running)
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker is not available. Colima may not be running."
+  read -p "Start colima? (y/n): " -n 1 -r
+  echo
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Starting colima..."
+    colima start
+    if ! docker info >/dev/null 2>&1; then
+      echo "Failed to start colima or Docker is still not available."
+      exit 1
+    fi
+  else
+    echo "Cannot proceed without Docker. Exiting."
+    exit 1
+  fi
+fi
+
 # Ensure mount directories exist
 mkdir -p ~/.container/{aws,vscode-server,amazon-q,codex,cache}
 
