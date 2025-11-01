@@ -152,12 +152,11 @@ get_build_labels() {
 check_local_image() {
     local target="$1"  # e.g., "full"
     local tag="$2"     # e.g., "latest" (though we don't use this currently)
-    local host_arch=$(get_host_arch)
 
-    # Check for new tag format (e.g., "full:arm64")
+    # Check for new format (e.g., "research-stack:full")
     # This matches the naming convention used by our updated build scripts
-    local new_format_name="${target}:${host_arch}"
-    if docker image inspect "${new_format_name}" >/dev/null 2>&1; then
+    local image_name="research-stack:${target}"
+    if docker image inspect "${image_name}" >/dev/null 2>&1; then
         return 0  # Success: image exists
     fi
 
@@ -176,7 +175,7 @@ build_image() {
         esac
     else
         print_status "Fallback docker build (build.sh missing)"
-        docker build --target "$target" $(get_build_labels) -t "${target}:$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/;s/arm64/arm64/')" .
+        docker build --target "$target" $(get_build_labels) -t "research-stack:${target}" .
     fi
     print_success "Build completed for target: $target"
 }
@@ -209,13 +208,13 @@ push_image() {
         return 1
     fi
     
-    # Use new tag format (matches our updated build scripts)
-    local source_image="${target}:${host_arch}"  # e.g., "full:arm64"
+    # Use research-stack base name (matches our updated build scripts)
+    local source_image="research-stack:${target}"  # e.g., "research-stack:full"
     
     # Verify the expected image exists
     if ! docker image inspect "${source_image}" >/dev/null 2>&1; then
         print_error "Expected image ${source_image} not found"
-        print_error "Make sure to build with the current build scripts that create tag-based names"
+        print_error "Make sure to build with the current build scripts"
         return 1
     fi
     

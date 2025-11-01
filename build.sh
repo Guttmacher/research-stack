@@ -186,8 +186,8 @@ fi
 
 R_BUILD_JOBS="${R_BUILD_JOBS:-2}"
 IMAGE_ARCH_SUFFIX=${BUILD_PLATFORM#linux/}
-IMAGE_TAG_BASE="${TARGET}"
-IMAGE_TAG="${IMAGE_TAG_BASE}:${IMAGE_ARCH_SUFFIX}${TAG_SUFFIX:-}"
+IMAGE_TAG_BASE="research-stack"
+IMAGE_TAG="${IMAGE_TAG_BASE}:${TARGET}${TAG_SUFFIX:-}"
 
 BUILD_ARGS=( --target "$TARGET" --build-arg R_BUILD_JOBS="$R_BUILD_JOBS" )
 $DEBUG_PACKAGES && BUILD_ARGS+=( --build-arg DEBUG_PACKAGES=true ) || true
@@ -208,8 +208,8 @@ else
   if $DOCKER_DAEMON_UP && [ "$OUTPUT_MODE" != load ]; then
     # Use docker buildx --output to artifact
     case "$OUTPUT_MODE" in
-      oci) OUT_DEST="${TARGET}-${IMAGE_ARCH_SUFFIX}.oci"; OUT_SPEC="type=oci,dest=${OUT_DEST}";;
-      tar) OUT_DEST="${TARGET}-${IMAGE_ARCH_SUFFIX}.tar"; OUT_SPEC="type=docker,dest=${OUT_DEST}";;
+      oci) OUT_DEST="research-stack-${TARGET}-${IMAGE_ARCH_SUFFIX}.oci"; OUT_SPEC="type=oci,dest=${OUT_DEST}";;
+      tar) OUT_DEST="research-stack-${TARGET}-${IMAGE_ARCH_SUFFIX}.tar"; OUT_SPEC="type=docker,dest=${OUT_DEST}";;
     esac
     if $NEED_BUILDX; then
       info "Using buildx (artifact export $OUTPUT_MODE)"
@@ -247,8 +247,8 @@ else
         err "buildctl unavailable. Cannot proceed without docker daemon. Install buildkit or start Docker."; exit 6
       fi
     case "$OUTPUT_MODE" in
-      oci) OUT_DEST="${TARGET}-${IMAGE_ARCH_SUFFIX}.oci"; OUT_SPEC="type=oci,dest=${OUT_DEST}";;
-      tar) OUT_DEST="${TARGET}-${IMAGE_ARCH_SUFFIX}.tar"; OUT_SPEC="type=docker,dest=${OUT_DEST}";;
+      oci) OUT_DEST="research-stack-${TARGET}-${IMAGE_ARCH_SUFFIX}.oci"; OUT_SPEC="type=oci,dest=${OUT_DEST}";;
+      tar) OUT_DEST="research-stack-${TARGET}-${IMAGE_ARCH_SUFFIX}.tar"; OUT_SPEC="type=docker,dest=${OUT_DEST}";;
       load) err "Internal error: load mode should not reach buildctl path"; exit 7;;
     esac
     info "Using rootless buildctl (output=$OUTPUT_MODE)"
