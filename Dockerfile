@@ -1036,8 +1036,6 @@ RUN set -e; \
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.14 2 && \
     # Install pip using Python 3.14's built-in ensurepip (without upgrade to avoid conflicts)
     python3.14 -m ensurepip && \
-    # Pin setuptools to avoid pkg_resources deprecation warnings
-    python3.14 -m pip install --ignore-installed "setuptools<81" && \
     # Install cffi and cryptography first to fix compatibility issues
     python3.14 -m pip install --ignore-installed cffi cryptography && \
     # Install common development tools and Stan packages
