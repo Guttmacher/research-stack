@@ -36,12 +36,12 @@ add_newline = false
 [username]
 show_always = false
 style_user = "bg:#8B7355 fg:black"
-style_root = "bg:#8B7355 bold fg:red"
+style_root = "bg:#8B7355 bold fg:#8B0000"
 format = '[ $user@]($style)'
 disabled = false
 
 [hostname]
-ssh_only = true
+ssh_only = false
 style = "bg:#8B7355 fg:black"
 format = '[$hostname ]($style)'
 
