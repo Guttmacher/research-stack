@@ -1746,7 +1746,7 @@ RUN set -e; \
     RELEASE_INFO=$(curl -fsSL https://api.github.com/repos/starship/starship/releases/latest); \
     STARSHIP_VERSION=$(echo "$RELEASE_INFO" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'); \
     echo "Installing starship version: ${STARSHIP_VERSION}"; \
-    STARSHIP_TAR_URL="https://github.com/starship/starship/releases/download/${STARSHIP_VERSION}/starship-${STARSHIP_ARCH}-unknown-linux-gnu.tar.gz"; \
+    STARSHIP_TAR_URL="https://github.com/starship/starship/releases/download/${STARSHIP_VERSION}/starship-${STARSHIP_ARCH}-unknown-linux-musl.tar.gz"; \
     echo "Downloading starship from: ${STARSHIP_TAR_URL}"; \
     curl -fsSL "$STARSHIP_TAR_URL" -o /tmp/starship.tar.gz; \
     STARSHIP_SHA256=$(sha256sum /tmp/starship.tar.gz | cut -d' ' -f1); \
