@@ -1039,7 +1039,7 @@ RUN set -e; \
     # Install cffi and cryptography first to fix compatibility issues
     python3.14 -m pip install --ignore-installed cffi cryptography && \
     # Install common development tools and Stan packages
-    python3.14 -m pip install --ignore-installed black flake8 mypy isort uv cmdstanpy arviz xarray pandas numpy matplotlib seaborn jax numpyro torch pyro-ppl scikit-learn scipy && \
+    python3.14 -m pip install --ignore-installed black flake8 mypy isort uv cmdstanpy arviz xarray pandas numpy matplotlib seaborn jax numpyro scikit-learn scipy && \
     # Verify installation
     python3 --version && \
     python3.14 --version && \
