@@ -36,3 +36,6 @@
    # Install Claude Code
    RUN curl -fsSL https://claude.ai/install.sh | bash
 
+   # Install droid
+   RUN curl -fsSL https://app.factory.ai/cli | sh
+
