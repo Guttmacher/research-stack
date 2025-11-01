@@ -1,4 +1,8 @@
-   # Dockerfile for Base Container with Amazon Q CLI and OpenaI Codex pre-installed
+   # Dockerfile for full research stack, plus AI agents:
+   # - Amazon Q Developer CLI ("Q")
+   # - Amazon CLI Agent Orchestrator ("CAO")
+   # - OpenaI Codex
+   # - Claude Code
    FROM ghcr.io/guttmacher/research-stack/full:latest
 
    # Switch to the me user for installation
@@ -23,8 +27,12 @@
    # Ensure Q CLI is in PATH for all users
    ENV PATH="/home/me/.local/bin:$PATH"
 
-   # Install Codex CLI via npm without global (-g)
-   # Install into a user-local prefix and symlink into ~/.local/bin (already on PATH)
+   # Install Codex CLI via npm, 
+   # and symlink into ~/.local/bin (already on PATH)
    RUN mkdir -p /home/me/.local/codex /home/me/.local/bin && \
        npm install @openai/codex --prefix /home/me/.local/codex && \
        ln -sf /home/me/.local/codex/node_modules/.bin/codex /home/me/.local/bin/codex
+
+   # Install Claude Code
+   RUN curl -fsSL https://claude.ai/install.sh | bash
+
