@@ -10,7 +10,7 @@ USER me
 WORKDIR /home/me
 
 # Install Amazon Q CLI during image build
-RUN curl --proto '=https' --tlsv1.2 -sSf \
+RUN curl --proto '=https' --tlsv1.2 --fail -sSL \
     'https://desktop-release.q.us-east-1.amazonaws.com/latest/q-aarch64-linux.zip' \
     -o 'q.zip' && \
     unzip q.zip && \
@@ -34,8 +34,8 @@ RUN mkdir -p /home/me/.local/codex /home/me/.local/bin && \
     ln -sf /home/me/.local/codex/node_modules/.bin/codex /home/me/.local/bin/codex
 
 # Install Claude Code
-RUN curl -fsSL https://claude.ai/install.sh | bash
+RUN curl --proto '=https' --tlsv1.2 --fail -fsSL https://claude.ai/install.sh | bash
 
 # Install droid
-RUN curl -fsSL https://app.factory.ai/cli | sh
+RUN curl --proto '=https' --tlsv1.2 --fail -fsSL https://app.factory.ai/cli | sh
 

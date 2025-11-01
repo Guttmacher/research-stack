@@ -50,6 +50,7 @@ docker run -d \
   -v "$(pwd)":/workspace \
   -e TZ=$TZ \
   --init \
+  --no-new-privileges \
   $IMAGE_NAME \
   sleep infinity
 
