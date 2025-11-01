@@ -72,6 +72,7 @@ OPTIONS:
     -b, --build            Build the image before pushing
     -f, --force            Force push even if image doesn't exist locally
     -a, --all-platforms    Build and push multi-platform images (linux/amd64,linux/arm64)
+    -m, --manifest         Create multi-arch manifest from existing arch-specific images
     -h, --help             Show this help message
 
 EXAMPLES:
@@ -151,11 +152,10 @@ get_build_labels() {
 # This gives a clear error message instead of a confusing Docker error.
 check_local_image() {
     local target="$1"  # e.g., "full"
-    local tag="$2"     # e.g., "latest" (though we don't use this currently)
+    local arch="$2"    # e.g., "arm64" or "amd64"
 
-    # Check for new format (e.g., "research-stack:full")
-    # This matches the naming convention used by our updated build scripts
-    local image_name="research-stack:${target}"
+    # Check for arch-specific format (e.g., "research-stack:full-arm64")
+    local image_name="research-stack:${target}-${arch}"
     if docker image inspect "${image_name}" >/dev/null 2>&1; then
         return 0  # Success: image exists
     fi
@@ -163,31 +163,10 @@ check_local_image() {
     return 1  # Failure: image not found
 }
 
-build_image() {
-    local target="$1"
-    local tag="$2"
-    print_status "Building image for target: $target via unified build.sh"
-    if [[ -f ./build.sh ]]; then
-        case "$target" in
-          full) ./build.sh full ;;
-          r-ci)    ./build.sh r-ci    ;;
-          *) print_error "Unknown target: $target"; return 1;;
-        esac
-    else
-        print_status "Fallback docker build (build.sh missing)"
-        docker build --target "$target" $(get_build_labels) -t "research-stack:${target}" .
-    fi
-    print_success "Build completed for target: $target"
-}
-
-# Function to push a local image to the registry
-# WHY THIS IS COMPLEX: We need to handle different naming conventions and tag formats
-# for different container types (full vs r-ci)
-push_image() {
+# Function to create multi-arch manifest from separate architecture builds
+create_multiarch_manifest() {
     local target="$1"   # e.g., "full" or "r-ci"
     local tag="$2"      # e.g., "latest"
-    local force="$3"    # "true" if user wants to force push without local image
-    local host_arch=$(get_host_arch)
     
     # Determine the registry image name based on target
     local image_name
@@ -200,16 +179,88 @@ push_image() {
         return 1
     fi
     
-    local remote_image="${REGISTRY}/${REPOSITORY}/${image_name}:${tag}"
+    local base_remote="${REGISTRY}/${REPOSITORY}/${image_name}"
+    local manifest_tag="${base_remote}:${tag}"
+    local arm64_tag="${base_remote}:${target}-arm64"
+    local amd64_tag="${base_remote}:${target}-amd64"
+    
+    print_status "Creating multi-arch manifest: $manifest_tag"
+    print_status "  ARM64: $arm64_tag"
+    print_status "  AMD64: $amd64_tag"
+    
+    # Create the manifest
+    if docker manifest create "$manifest_tag" "$arm64_tag" "$amd64_tag"; then
+        # Push the manifest
+        if docker manifest push "$manifest_tag"; then
+            print_success "Multi-arch manifest created and pushed: $manifest_tag"
+            return 0
+        else
+            print_error "Failed to push manifest: $manifest_tag"
+            return 1
+        fi
+    else
+        print_error "Failed to create manifest: $manifest_tag"
+        return 1
+    fi
+}
+
+    local target="$1"
+    local tag="$2"
+    print_status "Building image for target: $target via unified build.sh"
+    if [[ -f ./build.sh ]]; then
+        case "$target" in
+          full) ./build.sh full ;;
+          r-ci)    ./build.sh r-ci    ;;
+          *) print_error "Unknown target: $target"; return 1;;
+        esac
+build_image() {
+    local target="$1"
+    local tag="$2"
+    print_status "Building image for target: $target via unified build.sh"
+    if [[ -f ./build.sh ]]; then
+        case "$target" in
+          full) ./build.sh full ;;
+          r-ci)    ./build.sh r-ci    ;;
+          *) print_error "Unknown target: $target"; return 1;;
+        esac
+    else
+        print_status "Fallback docker build (build.sh missing)"
+        local host_arch=$(get_host_arch)
+        docker build --target "$target" $(get_build_labels) -t "research-stack:${target}-${host_arch}" .
+    fi
+    print_success "Build completed for target: $target"
+}
+
+# Function to push a local image to the registry
+# WHY THIS IS COMPLEX: We need to handle different naming conventions and tag formats
+# for different container types (full vs r-ci)
+push_image() {
+    local target="$1"   # e.g., "full" or "r-ci"
+    local tag="$2"      # e.g., "latest"
+    local arch="$3"     # e.g., "arm64" or "amd64"
+    local force="$4"    # "true" if user wants to force push without local image
+    
+    # Determine the registry image name based on target
+    local image_name
+    if [[ "$target" == "full" ]]; then
+        image_name="full"
+    elif [[ "$target" == "r-ci" ]]; then
+        image_name="r-ci"
+    else
+        print_error "Unknown target: $target"
+        return 1
+    fi
+    
+    local remote_image="${REGISTRY}/${REPOSITORY}/${image_name}:${target}-${arch}"
     
     # Check if local image exists (unless forcing)
-    if ! check_local_image "$target" "$tag" && [[ "$force" != "true" ]]; then
+    if ! check_local_image "$target" "$arch" && [[ "$force" != "true" ]]; then
         print_error "Local image not found. Use -b to build or -f to force."
         return 1
     fi
     
-    # Use research-stack base name (matches our updated build scripts)
-    local source_image="research-stack:${target}"  # e.g., "research-stack:full"
+    # Use arch-specific naming (matches our updated build scripts)
+    local source_image="research-stack:${target}-${arch}"  # e.g., "research-stack:full-arm64"
     
     # Verify the expected image exists
     if ! docker image inspect "${source_image}" >/dev/null 2>&1; then
@@ -284,6 +335,7 @@ BUILD_FIRST=false
 PUSH_ALL=true  # Default to pushing all targets
 FORCE=false
 ALL_PLATFORMS=false  # New option for multi-platform builds
+CREATE_MANIFEST=false  # New option for creating multi-arch manifests
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -307,6 +359,11 @@ while [[ $# -gt 0 ]]; do
         -a|--all-platforms)
             ALL_PLATFORMS=true
             print_status "Multi-platform mode enabled (linux/amd64,linux/arm64)"
+            shift
+            ;;
+        -m|--manifest)
+            CREATE_MANIFEST=true
+            print_status "Multi-arch manifest mode enabled"
             shift
             ;;
         -h|--help)
@@ -378,10 +435,51 @@ if [[ "$ALL_PLATFORMS" == "true" ]]; then
             exit 1
         fi
     fi
+elif [[ "$CREATE_MANIFEST" == "true" ]]; then
+    # Create multi-arch manifests from existing arch-specific images
+    print_status "Creating multi-arch manifests from existing images..."
+    
+    if [[ "$PUSH_ALL" == "true" ]]; then
+        print_status "Creating manifests for all targets..."
+        for target in "${TARGETS[@]}"; do
+            echo
+            print_status "Creating manifest for target: $target"
+            
+            # Push both architectures first
+            for arch in "arm64" "amd64"; do
+                if check_local_image "$target" "$arch"; then
+                    push_image "$target" "$TAG" "$arch" "$FORCE"
+                else
+                    print_error "Missing local image for $target-$arch"
+                    exit 1
+                fi
+            done
+            
+            # Create multi-arch manifest
+            create_multiarch_manifest "$target" "$TAG"
+        done
+    else
+        print_status "Creating manifest for single target: $TARGET"
+        
+        # Push both architectures first
+        for arch in "arm64" "amd64"; do
+            if check_local_image "$TARGET" "$arch"; then
+                push_image "$TARGET" "$TAG" "$arch" "$FORCE"
+            else
+                print_error "Missing local image for $TARGET-$arch"
+                exit 1
+            fi
+        done
+        
+        # Create multi-arch manifest
+        create_multiarch_manifest "$TARGET" "$TAG"
+    fi
 else
     # Default behavior: push existing local images (host platform)
+    host_arch=$(get_host_arch)
+    
     if [[ "$PUSH_ALL" == "true" ]]; then
-        print_status "Pushing all targets (host platform)..."
+        print_status "Pushing all targets (host platform: $host_arch)..."
         for target in "${TARGETS[@]}"; do
             echo
             print_status "Processing target: $target"
@@ -390,16 +488,16 @@ else
                 build_image "$target" "$target"
             fi
             
-            push_image "$target" "$TAG" "$FORCE"
+            push_image "$target" "$TAG" "$host_arch" "$FORCE"
         done
     else
-        print_status "Processing single target: $TARGET (host platform)"
+        print_status "Processing single target: $TARGET (host platform: $host_arch)"
         
         if [[ "$BUILD_FIRST" == "true" ]]; then
             build_image "$TARGET" "$TAG"
         fi
         
-        push_image "$TARGET" "$TAG" "$FORCE"
+        push_image "$TARGET" "$TAG" "$host_arch" "$FORCE"
     fi
 fi
 
